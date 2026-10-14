@@ -9,9 +9,14 @@ const totalEl = document.getElementById("total");
 function parseFile(file) {
   return new Promise((resolve, reject) => {
     Papa.parse(file, {
-      header: true,
       skipEmptyLines: true,
-      complete: (parsed) => resolve(parsed.data),
+      complete: (parsed) => {
+        try {
+          resolve(rowsFromArrays(parsed.data));
+        } catch (err) {
+          reject(err);
+        }
+      },
       error: reject,
     });
   });
@@ -60,6 +65,6 @@ input.addEventListener("change", async (event) => {
     show(findSubscriptions(groups, names));
   } catch (err) {
     results.hidden = true;
-    message.textContent = "Could not read that file. Is it a Chase CSV export?";
+    message.textContent = err.message || "Could not read that file.";
   }
 });

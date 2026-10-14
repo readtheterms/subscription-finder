@@ -9,10 +9,16 @@ function makeKey(description) {
   return letters.slice(0, 15);
 }
 
-// "10/13/2026" -> milliseconds
+// Accepts 10/13/2026, 10/13/26, 10-13-2026 and 2026-10-13 -> milliseconds
 function parseDate(text) {
-  const [month, day, year] = text.split("/").map(Number);
-  return Date.UTC(year, month - 1, day);
+  const t = text.trim();
+  let match = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) return Date.UTC(+match[1], +match[2] - 1, +match[3]);
+
+  match = t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4}|\d{2})/);
+  if (!match) return NaN;
+  const year = match[3].length === 2 ? 2000 + +match[3] : +match[3];
+  return Date.UTC(year, +match[1] - 1, +match[2]);
 }
 
 function formatDate(ms) {
@@ -35,17 +41,140 @@ function median(numbers) {
   return (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+// Turn raw CSV rows (arrays, from Papa Parse with header: false) into objects.
+// If the first row has no date in it, it is a header row. Otherwise the file has
+// no header (some banks do this), so guess the columns from what the values look like.
+function rowsFromArrays(arrays) {
+  const data = arrays.filter((row) => row.some((cell) => cell.trim() !== ""));
+  if (data.length === 0) throw new Error("The file has no rows.");
+
+  const first = data[0];
+  const hasHeader = !first.some((cell) => !Number.isNaN(parseDate(cell)));
+  if (hasHeader) {
+    return data.slice(1).map((row) =>
+      Object.fromEntries(first.map((name, i) => [name, row[i] === undefined ? "" : row[i]]))
+    );
+  }
+
+  const width = Math.max(...data.map((row) => row.length));
+  const share = (col, test) => data.filter((row) => test((row[col] || "").trim())).length / data.length;
+  const isDate = (text) => !Number.isNaN(parseDate(text));
+  const isNumber = (text) => /^\(?-?\$?[\d,]*\.?\d+\)?$/.test(text);
+
+  let dateCol = -1;
+  let amountCol = -1;
+  for (let col = 0; col < width; col++) {
+    if (dateCol === -1 && share(col, isDate) >= 0.8) dateCol = col;
+    else if (amountCol === -1 && share(col, isNumber) >= 0.8) amountCol = col;
+  }
+
+  let descCol = -1;
+  let longest = 0;
+  for (let col = 0; col < width; col++) {
+    if (col === dateCol || col === amountCol) continue;
+    const average = data.reduce((sum, row) => sum + (row[col] || "").trim().length, 0) / data.length;
+    if (average > longest) {
+      longest = average;
+      descCol = col;
+    }
+  }
+
+  if (dateCol === -1 || amountCol === -1 || descCol === -1) {
+    throw new Error("Could not tell which columns hold the date, description and amount.");
+  }
+  return data.map((row) => ({
+    Date: row[dateCol] || "",
+    Description: row[descCol] || "",
+    Amount: row[amountCol] || "",
+  }));
+}
+
+// Find which column holds what, by looking at the header names.
+// "exact" names win over headers that merely contain the word.
+function findColumn(headers, exact, contains) {
+  const lower = headers.map((h) => h.trim().toLowerCase());
+  for (const name of exact) {
+    const i = lower.indexOf(name);
+    if (i !== -1) return headers[i];
+  }
+  for (const word of contains) {
+    const i = lower.findIndex((h) => h.includes(word));
+    if (i !== -1) return headers[i];
+  }
+  return null;
+}
+
+function detectColumns(headers) {
+  const date = findColumn(
+    headers,
+    ["posting date", "post date", "posted date", "transaction date", "trans date", "date"],
+    ["date"]
+  );
+  const description = findColumn(
+    headers,
+    ["description", "merchant", "payee", "name", "memo", "details", "transaction"],
+    ["descr", "merchant", "payee", "memo"]
+  );
+  const amount = findColumn(headers, ["amount", "amt"], ["amount"]);
+  const debit = findColumn(headers, ["debit", "withdrawal", "withdrawals", "money out", "paid out"], []);
+
+  if (!date || !description || (!amount && !debit)) {
+    throw new Error(
+      "Could not find the columns. Need a date, a description and an amount (or debit) column. Found: " +
+        headers.join(", ")
+    );
+  }
+  return { date, description, amount, debit };
+}
+
+// "$1,234.50" -> 1234.5, "(12.00)" -> -12, "" -> NaN
+function parseAmount(text) {
+  if (text === undefined || text === null) return NaN;
+  let t = String(text).trim();
+  const negative = /^\(.*\)$/.test(t) || t.startsWith("-");
+  t = t.replace(/[^0-9.]/g, "");
+  if (t === "") return NaN;
+  return negative ? -parseFloat(t) : parseFloat(t);
+}
+
 // rows: array of objects from Papa Parse (header: true)
+// Returns charges with spending stored as negative amounts, like the Chase export.
 function loadCharges(rows) {
   const groups = new Map();
   const names = new Map();
+  if (rows.length === 0) throw new Error("The file has no rows.");
 
+  const cols = detectColumns(Object.keys(rows[0]));
+
+  // Turn every row into {date, description, amount}
+  let entries = [];
   for (const row of rows) {
-    const date = row["Posting Date"];
-    let description = row["Description"].split(/\s+/).filter(Boolean).join(" ");
+    const date = (row[cols.date] || "").trim();
+    if (Number.isNaN(parseDate(date))) continue;
+
+    let amount = cols.amount ? parseAmount(row[cols.amount]) : NaN;
+    if (Number.isNaN(amount) && cols.debit) {
+      const debit = parseAmount(row[cols.debit]);
+      if (!Number.isNaN(debit) && debit !== 0) amount = -Math.abs(debit);
+    }
+    if (Number.isNaN(amount)) continue;
+
+    entries.push({ date, description: row[cols.description] || "", amount });
+  }
+
+  // Some banks (often credit cards) list purchases as positive numbers.
+  // If almost nothing is negative, flip the signs so spending is negative.
+  if (cols.amount && !cols.debit) {
+    const negatives = entries.filter((e) => e.amount < 0).length;
+    if (negatives < entries.length * 0.25) {
+      entries = entries.map((e) => ({ ...e, amount: -e.amount }));
+    }
+  }
+
+  for (const { date, description: raw, amount } of entries) {
+    let description = raw.split(/\s+/).filter(Boolean).join(" ");
     description = description.replace(/ \d\d\/\d\d$/, "");
     description = description.replace(/^POS DEBIT /, "");
-    const amount = parseFloat(row["Amount"]);
 
     if (amount >= 0) continue;
 
@@ -57,6 +186,7 @@ function loadCharges(rows) {
     groups.get(key).push([date, amount]);
   }
 
+  if (groups.size === 0) throw new Error("No purchases found in that file.");
   return { groups, names };
 }
 
@@ -178,5 +308,5 @@ function monthlyTotal(subscriptions) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
+  module.exports = { rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
 }
