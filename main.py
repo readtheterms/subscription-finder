@@ -1,8 +1,10 @@
-import sys
 import csv
 import re
-from datetime import datetime, timedelta
 import statistics
+import sys
+from datetime import datetime, timedelta
+
+SKIP = ["discover", "capitalone", "chasecredit", "zelle", "onlinetransfer"]
 
 
 def make_key(description):
@@ -10,15 +12,42 @@ def make_key(description):
     return letters[:15]
 
 
+def parse_date(text):
+    return datetime.strptime(text, "%m/%d/%Y")
+
+
 def days_between(dates):
-    parsed = sorted(datetime.strptime(d, "%m/%d/%Y") for d in dates)
+    parsed = sorted(parse_date(d) for d in dates)
     gaps = []
     for i in range(1, len(parsed)):
         gaps.append((parsed[i] - parsed[i - 1]).days)
     return gaps
 
-SKIP = ["discover", "capitalone", "chasecredit", "zelle", "onlinetransfer"]
-    
+
+def load_charges(filename):
+    groups = {}
+    names = {}
+
+    with open(filename, newline="") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            date = row["Posting Date"]
+            description = " ".join(row["Description"].split())
+            description = re.sub(r" \d\d/\d\d$", "", description)
+            amount = float(row["Amount"])
+
+            if amount >= 0:
+                continue
+
+            key = make_key(description)
+            if key not in groups:
+                groups[key] = []
+                names[key] = description
+            groups[key].append((date, amount))
+
+    return groups, names
+
+
 def looks_monthly(charges):
     if len(charges) < 3:
         return False
@@ -40,52 +69,58 @@ def looks_monthly(charges):
     return True
 
 
-groups = {}
-names = {}
-
-filename = sys.argv[1] if len(sys.argv) > 1 else "sample_transactions.csv"
-
-with open(filename, newline="") as file:
-    reader = csv.DictReader(file)
-    for row in reader:
-        date = row["Posting Date"]
-        description = " ".join(row["Description"].split())
-        description = re.sub(r" \d\d/\d\d$", "", description)
-        amount = float(row["Amount"])
-        if amount >= 0:
-            continue
-
-        key = make_key(description)
-        if key not in groups:
-            groups[key] = []
-            names[key] = description
-        groups[key].append((date, amount))
-
-latest = max(
-    datetime.strptime(date, "%m/%d/%Y")
-    for charges in groups.values()
-    for date, amount in charges
-)
-
-total = 0
-
-for key, charges in groups.items():
-    skip = False
+def is_skipped(key):
     for word in SKIP:
         if key.startswith(word):
-            skip = True
-    if skip or not looks_monthly(charges):
-        continue
+            return True
+    return False
 
-    pairs = sorted((datetime.strptime(d, "%m/%d/%Y"), abs(a)) for d, a in charges)
-    last, price = pairs[-1]
-    days_ago = (latest - last).days
 
-    if days_ago <= 40:
-        next_charge = last + timedelta(days=30)
-        print(names[key][:30], price, "next:", next_charge.date())
-        total += price
-    else:
-        print(names[key][:30], price, "ended", last.date())
+def find_subscriptions(groups, names):
+    latest = max(
+        parse_date(date)
+        for charges in groups.values()
+        for date, amount in charges
+    )
 
-print("monthly total:", round(total, 2))
+    found = []
+    for key, charges in groups.items():
+        if is_skipped(key) or not looks_monthly(charges):
+            continue
+
+        pairs = sorted((parse_date(d), abs(a)) for d, a in charges)
+        last, price = pairs[-1]
+        active = (latest - last).days <= 40
+
+        found.append({
+            "name": names[key],
+            "price": price,
+            "last": last,
+            "active": active,
+        })
+
+    return found
+
+
+def print_report(subscriptions):
+    total = 0
+
+    for sub in subscriptions:
+        if sub["active"]:
+            next_charge = sub["last"] + timedelta(days=30)
+            print(sub["name"][:30], sub["price"], "next:", next_charge.date())
+            total += sub["price"]
+        else:
+            print(sub["name"][:30], sub["price"], "ended", sub["last"].date())
+
+    print("monthly total:", round(total, 2))
+
+
+def main():
+    filename = sys.argv[1] if len(sys.argv) > 1 else "sample_transactions.csv"
+    groups, names = load_charges(filename)
+    subscriptions = find_subscriptions(groups, names)
+    print_report(subscriptions)
+
+
+main()
