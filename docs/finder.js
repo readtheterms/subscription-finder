@@ -1,7 +1,10 @@
 // JavaScript port of main.py. Function names match main.py (snake_case -> camelCase).
 // Dates are stored as UTC milliseconds so daylight saving never changes a day count.
 
-const SKIP = ["discover", "capitalone", "chasecredit", "zelle", "onlinetransfer"];
+// Payments to credit cards and loans, transfers and cash withdrawals repeat too, but they are not subscriptions.
+const SKIP = ["discover", "capitalone", "chasecredit", "zelle", "onlinetransfer",
+  "citipayment", "citibank", "wfcreditcard", "wellsfargo", "merrickbank", "fortiva", "avant",
+  "recurringtransf", "transferto", "transferfrom", "atmwithdrawal", "atmcash"];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function makeKey(description) {
@@ -52,23 +55,87 @@ const BRANDS = [
   ["uber", "Uber"], ["lyft", "Lyft"], ["instacart", "Instacart"],
   ["walmartplus", "Walmart+"], ["costco", "Costco"], ["chegg", "Chegg"],
   ["grammarly", "Grammarly"], ["linkedin", "LinkedIn"], ["tmobile", "T-Mobile"],
-  ["verizon", "Verizon"],
+  ["verizon", "Verizon"], ["spectrum", "Spectrum"], ["frontiercommuni", "Frontier"],
+  ["socaledison", "SoCal Edison"], ["primobrands", "Primo Brands"],
+  ["agirenters", "Renters Insurance"],
+  // banks, cards and bills that show up in checking accounts
+  ["creditonebank", "Credit One Bank"], ["chasepayin", "Chase Pay in 4"],
+  ["chasecreditcrd", "Chase Credit Card"], ["tochasecard", "Chase Card"],
+  ["citiautopay", "Citi Card"], ["citicardonline", "Citi Card"],
+  ["comncap", "Comenity Capital Bank"], ["applecash", "Apple Cash"], ["applecard", "Apple Card"],
+  ["contfinance", "Continental Finance"], ["wellsfargocard", "Wells Fargo Card"],
+  ["bestbuy", "Best Buy"], ["venmo", "Venmo"], ["aaainsurance", "AAA Insurance"],
+  ["cityofredlands", "City of Redlands"], ["socalgas", "SoCal Gas"],
+  ["ustorit", "U-Stor-It"], ["tricon", "Tricon"], ["readyrefresh", "ReadyRefresh"],
+  // shops and apps
+  ["hpinstantink", "HP Instant Ink"], ["eosfitness", "EOS Fitness"], ["tiktok", "TikTok"],
+  ["temucom", "Temu"], ["walmart", "Walmart"], ["cvspharmacy", "CVS Pharmacy"],
+  ["staterbros", "Stater Bros."], ["burgerking", "Burger King"], ["jackinthebox", "Jack in the Box"],
+  ["walgreen", "Walgreens"], ["goodwill", "Goodwill"], ["stofcadmv", "California DMV"],
 ];
 
 const NOISE = ["bill", "payment", "pmt", "ppd", "id", "inc", "llc", "recurring", "autopay",
   "purchase", "debit", "pos", "online", "www", "the", "club", "fees"];
 
-// "SPOTIFY USA 877-778-1161 NY" -> "Spotify"
-function displayName(raw) {
+// Services that sell one thing. Their charges are grouped by company name, since the text around the
+// name changes from charge to charge. Big companies (Amazon, Apple, Google...) sell many things, so
+// they are not here: grouping them would mix a subscription in with ordinary purchases.
+const ONE_PRODUCT = new Set(["Netflix", "Spotify", "Hulu", "Disney+", "Max", "Paramount+", "Peacock",
+  "Crunchyroll", "Spectrum", "Frontier", "SoCal Edison", "Primo Brands", "Renters Insurance",
+  "Planet Fitness", "Peloton", "Audible", "Duolingo", "SiriusXM", "T-Mobile", "Verizon"]);
+
+// the company name if the description mentions a known one, otherwise null
+function brandFor(raw) {
   const letters = raw.toLowerCase().replace(/[^a-z]/g, "");
   for (const [needle, brand] of BRANDS) {
     if (letters.includes(needle)) return brand;
   }
+  return companyFor(raw);
+}
+
+// The big-company list (companies.js) is matched word by word, not as loose text, so "ross" inside
+// "crossroads" does not count. "Wal-Mart" becomes the words wal, mart and must appear in that order.
+function words(text) {
+  return text.toLowerCase().replace(/['’]/g, "").split(/[^a-z]+/).filter(Boolean);
+}
+
+const COMPANY_INDEX = new Map(); // first word -> companies starting with it
+if (typeof COMPANIES !== "undefined") {
+  for (const name of COMPANIES) {
+    const w = words(name);
+    if (!COMPANY_INDEX.has(w[0])) COMPANY_INDEX.set(w[0], []);
+    COMPANY_INDEX.get(w[0]).push({ name, words: w });
+  }
+}
+
+function companyFor(raw) {
+  const d = words(raw);
+  let best = null;
+  for (let i = 0; i < d.length; i++) {
+    // "WALGREENS" should find "Walgreen", so also try the word without a trailing s
+    const candidates = (COMPANY_INDEX.get(d[i]) || []).concat(COMPANY_INDEX.get(d[i].replace(/s$/, "")) || []);
+    for (const c of candidates) {
+      const last = c.words.length - 1;
+      const matches = c.words.every((w, j) => d[i + j] === w || (j === last && d[i + j] === w + "s"));
+      if (matches && (!best || c.words.length > best.words.length)) best = c;
+    }
+    if (best) return best.name;
+  }
+  return null;
+}
+
+// "SPOTIFY USA 877-778-1161 NY" -> "Spotify"
+function displayName(raw) {
+  const brand = brandFor(raw);
+  if (brand) return brand;
 
   // payment processors put the real merchant after a star: "PAYPAL *GAMESTORE"
-  let s = raw.replace(/^(paypal|pp|sq|tst|sp|py|dd)\s*\*\s*/i, "");
+  let s = raw.replace(/^paypal inst xfer\s+/i, "");
+  s = s.replace(/^(paypal|pp|sq|tst|sp|py|dd)\s*\*\s*/i, "");
   s = s.split(/[*\/#]/)[0];
-  s = s.replace(/\.(com|net|org|co).*$/i, "");
+  s = s.replace(/\s+(WEB|PPD|CCD|TEL)\s+ID:?.*$/i, "");
+  s = s.replace(/\.(com|net|org|co)\b.*$/i, "");
+  s = s.replace(/([A-Za-z])\d+/g, "$1");
   s = s.replace(/\s+\d.*$/, "");
 
   let words = s.split(/\s+/).filter(Boolean);
@@ -194,11 +261,10 @@ function parseAmount(text) {
   return negative ? -parseFloat(t) : parseFloat(t);
 }
 
-// rows: array of objects from Papa Parse (header: true)
-// Returns charges with spending stored as negative amounts, like the Chase export.
-function loadCharges(rows) {
-  const groups = new Map();
-  const names = new Map();
+// rows: the objects for ONE file (from rowsFromArrays). Every file is read on its own, because
+// two files can come from different banks with different column names and sign conventions.
+// Returns [{date, description, amount}] with spending stored as negative amounts, like the Chase export.
+function entriesFromRows(rows) {
   if (rows.length === 0) throw new Error("The file has no rows.");
 
   const cols = detectColumns(Object.keys(rows[0]));
@@ -227,15 +293,28 @@ function loadCharges(rows) {
       entries = entries.map((e) => ({ ...e, amount: -e.amount }));
     }
   }
+  return entries;
+}
+
+// entries: the entries from every file added together. Cleans the descriptions and groups the
+// purchases by merchant.
+function groupCharges(entries) {
+  const groups = new Map();
+  const names = new Map();
 
   for (const { date, description: raw, amount } of entries) {
     let description = raw.split(/\s+/).filter(Boolean).join(" ");
     description = description.replace(/ \d\d\/\d\d$/, "");
     description = description.replace(/^POS DEBIT /, "");
+    // some banks start every card line with the same words and put a date, location and card number around the merchant
+    description = description.replace(/^(?:PURCHASE|RECURRING PAYMENT)(?: RETURN)? AUTHORIZED ON \d\d\/\d\d /i, "");
+    description = description.replace(/ CARD \d{4}$/, "").replace(/ [SP]\d{9,}$/, "");
 
     if (amount >= 0) continue;
 
-    const key = makeKey(description);
+    // a one-product company is grouped by name, since its descriptions change from charge to charge
+    const brand = brandFor(description);
+    const key = ONE_PRODUCT.has(brand) ? "~" + brand.toLowerCase() : makeKey(description);
     if (!groups.has(key)) {
       groups.set(key, []);
       names.set(key, description);
@@ -245,6 +324,11 @@ function loadCharges(rows) {
 
   if (groups.size === 0) throw new Error("No purchases found in that file.");
   return { groups, names };
+}
+
+// one file's rows straight to groups
+function loadCharges(rows) {
+  return groupCharges(entriesFromRows(rows));
 }
 
 function looksMonthly(charges) {
@@ -339,7 +423,8 @@ function findSubscriptions(groups, names) {
         .map(([d, a]) => [parseDate(d), Math.abs(a)])
         .sort((x, y) => x[0] - y[0] || x[1] - y[1]);
       const [last, price] = pairs[pairs.length - 1];
-      const active = Math.round((latest - last) / MS_PER_DAY) <= grace;
+      const daysSince = Math.round((latest - last) / MS_PER_DAY);
+      const active = daysSince <= grace;
 
       found.push({
         name: names.get(key),
@@ -349,6 +434,8 @@ function findSubscriptions(groups, names) {
         last,
         next: last + cycle * MS_PER_DAY,
         active,
+        // the expected charge date passed (plus a few days of slack) and no new charge showed up
+        overdue: active && daysSince > cycle + 3,
       });
     }
   }
@@ -366,5 +453,5 @@ function monthlyTotal(subscriptions) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
+  module.exports = { entriesFromRows, groupCharges, brandFor, displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
 }

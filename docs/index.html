@@ -19,13 +19,19 @@
       <input type="file" id="csv-input" accept=".csv" multiple>
       <label for="csv-input" class="button">Choose Files</label>
       <span id="file-names">No file chosen</span>
+      <button type="button" id="clear-files" hidden>Clear</button>
     </div>
     <p id="message"></p>
 
     <div id="results" hidden>
       <h2>Active</h2>
+      <div class="sortbar">
+        Sort by:
+        <button type="button" data-sort="date" aria-pressed="false">Date</button>
+        <button type="button" data-sort="price" aria-pressed="false">Price</button>
+      </div>
       <table>
-        <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Next</th></tr></thead>
+        <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Next (est.)</th></tr></thead>
         <tbody id="active-body"></tbody>
       </table>
 
@@ -33,7 +39,7 @@
         <span>Monthly total:</span>
         <span id="total"></span>
       </div>
-      <p class="fine">Yearly plans count as 1/12 of their price.</p>
+      <p class="fine" id="fine">Yearly plans count as 1/12 of their price.</p>
 
       <details>
         <summary id="ended-summary">Ended</summary>
@@ -47,7 +53,10 @@
     <p class="thanks">Nothing leaves this page.</p>
   </main>
 
+  <div id="tip" role="tooltip" hidden></div>
+
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="companies.js"></script>
   <script src="finder.js"></script>
   <script src="app.js"></script>
 </body>
