@@ -4,36 +4,48 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Subscription Finder</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; }
-    table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1rem; }
-    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #ddd; }
-    #message { color: #b00020; }
-    summary { cursor: pointer; font-weight: 600; }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Subscription Finder</h1>
-  <p>Pick your bank or card CSV export(s) (needs a date, description and amount column). Everything runs in your browser and nothing is uploaded.</p>
-  <input type="file" id="csv-input" accept=".csv" multiple>
-  <p id="message"></p>
+  <main>
+    <header>
+      <h1>Subscription Finder</h1>
+      <p class="sub">Recurring charges</p>
+    </header>
 
-  <div id="results" hidden>
-    <h2>Active subscriptions</h2>
-    <table>
-      <thead><tr><th>Name</th><th>Price</th><th>Period</th><th>Next charge</th></tr></thead>
-      <tbody id="active-body"></tbody>
-    </table>
-    <p><strong>Monthly total: <span id="total"></span></strong></p>
+    <p class="lead">Choose your bank or card CSV. It needs a date, a description and an amount column. It is read in your browser and nothing is uploaded.</p>
 
-    <details>
-      <summary id="ended-summary">Ended</summary>
+    <div class="picker">
+      <input type="file" id="csv-input" accept=".csv" multiple>
+      <label for="csv-input" class="button">Choose Files</label>
+      <span id="file-names">No file chosen</span>
+    </div>
+    <p id="message"></p>
+
+    <div id="results" hidden>
+      <h2>Active</h2>
       <table>
-        <thead><tr><th>Name</th><th>Price</th><th>Period</th><th>Last charge</th></tr></thead>
-        <tbody id="ended-body"></tbody>
+        <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Next</th></tr></thead>
+        <tbody id="active-body"></tbody>
       </table>
-    </details>
-  </div>
+
+      <div class="total-row">
+        <span>Monthly total:</span>
+        <span id="total"></span>
+      </div>
+      <p class="fine">Yearly plans count as 1/12 of their price.</p>
+
+      <details>
+        <summary id="ended-summary">Ended</summary>
+        <table>
+          <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Last</th></tr></thead>
+          <tbody id="ended-body"></tbody>
+        </table>
+      </details>
+    </div>
+
+    <p class="thanks">Nothing leaves this page.</p>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="finder.js"></script>

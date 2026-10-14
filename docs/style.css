@@ -1,0 +1,117 @@
+/* A plain black-and-white till receipt. */
+
+:root {
+  --bg: #e6e6e6;
+  --paper: #ffffff;
+  --ink: #111111;
+  --faded: #555555;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+main {
+  position: relative;
+  max-width: 30rem;
+  margin: 3rem auto;
+  padding: 2rem 1.5rem 2.5rem;
+  background: var(--paper);
+  /* drop-shadow (not box-shadow) so the shadow follows the jagged edges */
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+/* torn paper: a row of triangles along the top and bottom edge */
+main::before,
+main::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9px;
+}
+main::before {
+  top: -8px;
+  background: conic-gradient(from 135deg at 50% 0, var(--paper) 90deg, transparent 0) 0 0 / 16px 100%;
+}
+main::after {
+  bottom: -8px;
+  background: conic-gradient(from -45deg at 50% 100%, var(--paper) 90deg, transparent 0) 0 0 / 16px 100%;
+}
+
+header { text-align: center; margin-bottom: 1.5rem; }
+h1 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
+.sub { margin: 0.25rem 0 0; color: var(--faded); }
+
+.lead { margin: 0 0 1rem; color: var(--faded); font-size: 0.85rem; }
+
+.picker { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+/* the real input stays in the page for keyboard and screen readers, but only the label is clickable */
+.picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.button {
+  flex: none;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+.button:hover, .picker input:focus-visible + .button { background: var(--ink); color: var(--paper); }
+#file-names { color: var(--faded); overflow-wrap: anywhere; }
+
+#message { margin: 0.75rem 0 0; font-weight: 700; }
+#message:empty { display: none; }
+
+#results { margin-top: 1.5rem; }
+
+h2 { margin: 0 0 0.4rem; font-size: 0.95rem; text-transform: uppercase; }
+
+table { border-collapse: collapse; width: 100%; }
+th {
+  padding: 0.2rem 0.3rem;
+  text-align: left;
+  font-weight: 400;
+  color: var(--faded);
+  border-bottom: 1px dashed var(--ink);
+}
+td { padding: 0.3rem 0.3rem; vertical-align: top; }
+
+th:nth-child(2), td:nth-child(2) { text-align: right; white-space: nowrap; }
+td:nth-child(3), td:nth-child(4) { color: var(--faded); font-size: 0.85rem; }
+td:nth-child(4) { white-space: nowrap; }
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--ink);
+}
+#total { font-size: 1.8rem; font-weight: 700; }
+.fine { margin: 0.25rem 0 1.25rem; color: var(--faded); font-size: 0.8rem; }
+
+details summary { cursor: pointer; text-transform: uppercase; }
+details[open] summary { margin-bottom: 0.4rem; }
+details td { color: var(--faded); }
+
+.thanks { margin: 2rem 0 0; text-align: center; color: var(--faded); font-size: 0.8rem; }
+
+@media (max-width: 520px) {
+  main { margin: 1rem 0; padding: 1.5rem 0.9rem 2rem; }
+  td { font-size: 0.82rem; }
+  #total { font-size: 1.5rem; }
+}

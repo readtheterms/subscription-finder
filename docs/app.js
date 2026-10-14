@@ -5,6 +5,7 @@ const activeBody = document.getElementById("active-body");
 const endedBody = document.getElementById("ended-body");
 const endedSummary = document.getElementById("ended-summary");
 const totalEl = document.getElementById("total");
+const fileNames = document.getElementById("file-names");
 
 function parseFile(file) {
   return new Promise((resolve, reject) => {
@@ -40,10 +41,10 @@ function show(subscriptions) {
   const ended = subscriptions.filter((s) => !s.active);
 
   for (const s of active) {
-    addRow(activeBody, [s.name.slice(0, 30), "$" + s.price.toFixed(2), s.period, formatDate(s.next)]);
+    addRow(activeBody, [s.displayName, "$" + s.price.toFixed(2), s.period, formatDateUS(s.next)]);
   }
   for (const s of ended) {
-    addRow(endedBody, [s.name.slice(0, 30), "$" + s.price.toFixed(2), s.period, formatDate(s.last)]);
+    addRow(endedBody, [s.displayName, "$" + s.price.toFixed(2), s.period, formatDateUS(s.last)]);
   }
 
   totalEl.textContent = "$" + monthlyTotal(subscriptions).toFixed(2);
@@ -54,6 +55,7 @@ function show(subscriptions) {
 input.addEventListener("change", async (event) => {
   const files = [...event.target.files];
   if (files.length === 0) return;
+  fileNames.textContent = files.map((f) => f.name).join(", ");
 
   message.textContent = "";
   try {

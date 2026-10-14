@@ -25,6 +25,63 @@ function formatDate(ms) {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+// month/day/year, for display
+function formatDateUS(ms) {
+  const [year, month, day] = formatDate(ms).split("-");
+  return month + "/" + day + "/" + year;
+}
+
+// Known companies: if the description contains the left side (letters only,
+// lowercase), show the right side. More specific entries go first.
+const BRANDS = [
+  ["amazonprime", "Amazon Prime"], ["amzn", "Amazon"], ["amazon", "Amazon"],
+  ["spotify", "Spotify"], ["netflix", "Netflix"], ["hulu", "Hulu"],
+  ["disneyplus", "Disney+"], ["disney", "Disney"], ["hbomax", "Max"],
+  ["paramount", "Paramount+"], ["peacock", "Peacock"], ["crunchyroll", "Crunchyroll"],
+  ["appletv", "Apple TV"], ["applemusic", "Apple Music"], ["icloud", "iCloud"],
+  ["applecom", "Apple"], ["itunes", "Apple"], ["youtubepremium", "YouTube Premium"],
+  ["youtube", "YouTube"], ["googleone", "Google One"], ["googlestorage", "Google One"],
+  ["adobe", "Adobe"], ["microsoft", "Microsoft"], ["xbox", "Xbox"],
+  ["playstation", "PlayStation"], ["nintendo", "Nintendo"], ["dropbox", "Dropbox"],
+  ["openai", "OpenAI"], ["chatgpt", "ChatGPT"], ["anthropic", "Anthropic"],
+  ["planetfitness", "Planet Fitness"], ["lafitness", "LA Fitness"],
+  ["anytimefitness", "Anytime Fitness"], ["peloton", "Peloton"], ["audible", "Audible"],
+  ["patreon", "Patreon"], ["duolingo", "Duolingo"], ["canva", "Canva"],
+  ["github", "GitHub"], ["nytimes", "New York Times"], ["siriusxm", "SiriusXM"],
+  ["tinder", "Tinder"], ["discord", "Discord"], ["doordash", "DoorDash"],
+  ["uber", "Uber"], ["lyft", "Lyft"], ["instacart", "Instacart"],
+  ["walmartplus", "Walmart+"], ["costco", "Costco"], ["chegg", "Chegg"],
+  ["grammarly", "Grammarly"], ["linkedin", "LinkedIn"], ["tmobile", "T-Mobile"],
+  ["verizon", "Verizon"],
+];
+
+const NOISE = ["bill", "payment", "pmt", "ppd", "id", "inc", "llc", "recurring", "autopay",
+  "purchase", "debit", "pos", "online", "www", "the", "club", "fees"];
+
+// "SPOTIFY USA 877-778-1161 NY" -> "Spotify"
+function displayName(raw) {
+  const letters = raw.toLowerCase().replace(/[^a-z]/g, "");
+  for (const [needle, brand] of BRANDS) {
+    if (letters.includes(needle)) return brand;
+  }
+
+  // payment processors put the real merchant after a star: "PAYPAL *GAMESTORE"
+  let s = raw.replace(/^(paypal|pp|sq|tst|sp|py|dd)\s*\*\s*/i, "");
+  s = s.split(/[*\/#]/)[0];
+  s = s.replace(/\.(com|net|org|co).*$/i, "");
+  s = s.replace(/\s+\d.*$/, "");
+
+  let words = s.split(/\s+/).filter(Boolean);
+  while (words.length > 1 && /^[A-Z]{2}$/.test(words[words.length - 1])) words.pop();
+  const kept = words.filter((w) => !NOISE.includes(w.toLowerCase()));
+  if (kept.length > 0) words = kept;
+
+  return words
+    .slice(0, 3)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function daysBetween(dates) {
   const parsed = dates.map(parseDate).sort((a, b) => a - b);
   const gaps = [];
@@ -286,6 +343,7 @@ function findSubscriptions(groups, names) {
 
       found.push({
         name: names.get(key),
+        displayName: displayName(names.get(key)),
         price,
         period,
         last,
@@ -308,5 +366,5 @@ function monthlyTotal(subscriptions) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
+  module.exports = { displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
 }
