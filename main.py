@@ -1,3 +1,4 @@
+import sys
 import csv
 import re
 from datetime import datetime, timedelta
@@ -42,7 +43,9 @@ def looks_monthly(charges):
 groups = {}
 names = {}
 
-with open("Chase8770_Activity_20261014.csv", newline="") as file:
+filename = sys.argv[1] if len(sys.argv) > 1 else "sample_transactions.csv"
+
+with open(filename, newline="") as file:
     reader = csv.DictReader(file)
     for row in reader:
         date = row["Posting Date"]

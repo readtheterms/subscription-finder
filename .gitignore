@@ -1,1 +1,2 @@
 *.csv
+!sample_transactions.csv
