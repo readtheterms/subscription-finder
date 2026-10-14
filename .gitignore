@@ -1,2 +1,3 @@
 *.csv
 !sample_transactions.csv
+!docs/sample_transactions.csv

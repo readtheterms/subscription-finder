@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Subscription Finder</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; }
+    table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1rem; }
+    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #ddd; }
+    #message { color: #b00020; }
+    summary { cursor: pointer; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Subscription Finder</h1>
+  <p>Pick your Chase CSV export(s). Everything runs in your browser and nothing is uploaded.</p>
+  <input type="file" id="csv-input" accept=".csv" multiple>
+  <p id="message"></p>
+
+  <div id="results" hidden>
+    <h2>Active subscriptions</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Price</th><th>Period</th><th>Next charge</th></tr></thead>
+      <tbody id="active-body"></tbody>
+    </table>
+    <p><strong>Monthly total: <span id="total"></span></strong></p>
+
+    <details>
+      <summary id="ended-summary">Ended</summary>
+      <table>
+        <thead><tr><th>Name</th><th>Price</th><th>Period</th><th>Last charge</th></tr></thead>
+        <tbody id="ended-body"></tbody>
+      </table>
+    </details>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="finder.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
