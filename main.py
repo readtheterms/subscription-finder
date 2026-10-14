@@ -24,26 +24,28 @@ def days_between(dates):
     return gaps
 
 
-def load_charges(filename):
+def load_charges(filenames):
     groups = {}
     names = {}
 
-    with open(filename, newline="") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            date = row["Posting Date"]
-            description = " ".join(row["Description"].split())
-            description = re.sub(r" \d\d/\d\d$", "", description)
-            amount = float(row["Amount"])
+    for filename in filenames:
+        with open(filename, newline="") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                date = row["Posting Date"]
+                description = " ".join(row["Description"].split())
+                description = re.sub(r" \d\d/\d\d$", "", description)
+                description = re.sub(r"^POS DEBIT ", "", description)
+                amount = float(row["Amount"])
 
-            if amount >= 0:
-                continue
+                if amount >= 0:
+                    continue
 
-            key = make_key(description)
-            if key not in groups:
-                groups[key] = []
-                names[key] = description
-            groups[key].append((date, amount))
+                key = make_key(description)
+                if key not in groups:
+                    groups[key] = []
+                    names[key] = description
+                groups[key].append((date, amount))
 
     return groups, names
 
@@ -53,9 +55,17 @@ def looks_monthly(charges):
         return False
 
     dates = [date for date, amount in charges]
-    for gap in days_between(dates):
-        if gap < 25 or gap > 35:
-            return False
+    gaps = days_between(dates)
+    skipped = 0
+    for gap in gaps:
+        if 25 <= gap <= 35:
+            continue
+        if 55 <= gap <= 70:
+            skipped += 1
+            continue
+        return False
+    if skipped > len(gaps) * 0.2:
+        return False
 
     amounts = [abs(amount) for date, amount in charges]
     usual = statistics.median(amounts)
@@ -69,6 +79,24 @@ def looks_monthly(charges):
     return True
 
 
+def looks_yearly(charges):
+    if len(charges) < 2:
+        return False
+
+    dates = [date for date, amount in charges]
+    for gap in days_between(dates):
+        if gap < 350 or gap > 380:
+            return False
+
+    amounts = [abs(amount) for date, amount in charges]
+    usual = statistics.median(amounts)
+    for a in amounts:
+        if abs(a - usual) > usual * 0.25:
+            return False
+
+    return True
+
+
 def is_skipped(key):
     for word in SKIP:
         if key.startswith(word):
@@ -76,28 +104,68 @@ def is_skipped(key):
     return False
 
 
-def find_subscriptions(groups, names):
-    latest = max(
+def classify(charges):
+    if looks_monthly(charges):
+        return "monthly"
+    if looks_yearly(charges):
+        return "yearly"
+    return None
+
+
+def split_by_price(charges):
+    by_price = {}
+    for date, amount in charges:
+        if amount not in by_price:
+            by_price[amount] = []
+        by_price[amount].append((date, amount))
+    return list(by_price.values())
+
+
+def latest_date(groups):
+    return max(
         parse_date(date)
         for charges in groups.values()
         for date, amount in charges
     )
 
+
+def find_subscriptions(groups, names):
+    latest = latest_date(groups)
+
     found = []
     for key, charges in groups.items():
-        if is_skipped(key) or not looks_monthly(charges):
+        if is_skipped(key):
             continue
 
-        pairs = sorted((parse_date(d), abs(a)) for d, a in charges)
-        last, price = pairs[-1]
-        active = (latest - last).days <= 40
+        if classify(charges):
+            candidates = [charges]
+        else:
+            candidates = split_by_price(charges)
 
-        found.append({
-            "name": names[key],
-            "price": price,
-            "last": last,
-            "active": active,
-        })
+        for part in candidates:
+            period = classify(part)
+            if period is None:
+                continue
+            if period == "yearly" and len(part) < 3 and len(charges) > 40:
+                continue
+
+            if period == "monthly":
+                cycle, grace = 30, 40
+            else:
+                cycle, grace = 365, 380
+
+            pairs = sorted((parse_date(d), abs(a)) for d, a in part)
+            last, price = pairs[-1]
+            active = (latest - last).days <= grace
+
+            found.append({
+                "name": names[key],
+                "price": price,
+                "period": period,
+                "last": last,
+                "next": last + timedelta(days=cycle),
+                "active": active,
+            })
 
     return found
 
@@ -107,18 +175,24 @@ def print_report(subscriptions):
 
     for sub in subscriptions:
         if sub["active"]:
-            next_charge = sub["last"] + timedelta(days=30)
-            print(sub["name"][:30], sub["price"], "next:", next_charge.date())
-            total += sub["price"]
+            print(sub["name"][:30], sub["price"], sub["period"],
+                  "next:", sub["next"].date())
+            if sub["period"] == "yearly":
+                total += sub["price"] / 12
+            else:
+                total += sub["price"]
         else:
-            print(sub["name"][:30], sub["price"], "ended", sub["last"].date())
+            print(sub["name"][:30], sub["price"], sub["period"],
+                  "ended", sub["last"].date())
 
     print("monthly total:", round(total, 2))
 
 
 def main():
-    filename = sys.argv[1] if len(sys.argv) > 1 else "sample_transactions.csv"
-    groups, names = load_charges(filename)
+    filenames = sys.argv[1:]
+    if not filenames:
+        filenames = ["sample_transactions.csv"]
+    groups, names = load_charges(filenames)
     subscriptions = find_subscriptions(groups, names)
     print_report(subscriptions)
 
