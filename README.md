@@ -4,7 +4,7 @@
 
 Reads a bank or card statement CSV and lists the charges that repeat: what each subscription costs, when the next one is due, and your monthly and yearly totals. It runs entirely in the browser, so your file is never uploaded.
 
-![The page showing six recurring charges, including a tagged credit card payment, a due-soon tag, and monthly and yearly totals](docs/screenshot.png)
+![The page with two subscriptions picked for cancellation, showing the monthly and yearly savings](docs/screenshot.png)
 
 **Live page:** https://readtheterms.github.io/subscription-finder/ (no CSV handy? Click **Try sample data** to see it on made-up transactions.)
 
@@ -15,6 +15,7 @@ Reads a bank or card statement CSV and lists the charges that repeat: what each 
 - **Readable names.** `SPOTIFY USA 877-778-1161 NY` becomes `Spotify`, using a list of well-known companies plus some cleanup.
 - **See why it was detected.** Hover a row to see how many charges were found, how far apart they were, and when the last one was.
 - **Hide a row.** Click a row to gray it out and leave it out of the totals. Click again to count it.
+- **What if I cancel?** Switch "Click a row to" from *Hide from total* to *Cancel it*, then pick subscriptions. The page strikes them through and shows how much you would save per month and per year, and your new monthly total.
 - **Card payments are tagged.** A payment toward a credit card or loan is marked `CARD PAYMENT`, with a note that it may repeat purchases already on that card, and one button to hide or show them all.
 - **Sort** by date or price. Click the same button again to reverse.
 - **Tags.** `DUE SOON` means the next charge is expected within 7 days. `OVERDUE` means it was expected and didn't arrive. Dates are always estimates, and the page says how they are worked out.

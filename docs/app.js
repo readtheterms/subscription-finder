@@ -13,6 +13,13 @@ const sampleButton = document.getElementById("sample-button");
 const cardNote = document.getElementById("card-note");
 const cardNoteText = document.getElementById("card-note-text");
 const cardToggle = document.getElementById("card-toggle");
+const savingsEl = document.getElementById("savings");
+const savingsCount = document.getElementById("savings-count");
+const saveMonth = document.getElementById("save-month");
+const saveYear = document.getElementById("save-year");
+const newMonthly = document.getElementById("new-monthly");
+const clearCancel = document.getElementById("clear-cancel");
+const modeButtons = document.querySelectorAll(".modebar button");
 
 function parseFile(file) {
   return new Promise((resolve, reject) => {
@@ -53,6 +60,8 @@ const yearlyEl = document.getElementById("yearly-total");
 
 let current = []; // the active subscriptions on screen
 let hidden = new Set(); // the ones the user clicked to leave out of the total
+let canceled = new Set(); // the ones the user picked for "what if I cancel"
+let clickMode = "hide"; // what clicking a row does: "hide" it from the total, or "cancel" it to see savings
 
 // the payments toward a credit card or loan that are on screen
 const cardPayments = () => current.filter((s) => s.cardPayment);
@@ -72,16 +81,36 @@ function updateTotal() {
   yearlyEl.textContent = "$" + yearlyTotal(counted).toFixed(2);
   fineEl.textContent = hidden.size ? FINE + " " + hidden.size + " hidden." : FINE;
   updateCardNote();
+  updateSavings(counted);
+}
+
+// What the picked subscriptions would save. A row that is hidden is not in the totals, so canceling it saves nothing.
+function updateSavings(counted) {
+  const picked = counted.filter((s) => canceled.has(s));
+  savingsEl.hidden = picked.length === 0;
+  if (picked.length === 0) return;
+  const result = savingsFor(counted, picked);
+  savingsCount.textContent = picked.length + (picked.length === 1 ? " subscription" : " subscriptions");
+  saveMonth.textContent = "$" + result.perMonth.toFixed(2);
+  saveYear.textContent = "$" + result.perYear.toFixed(2);
+  newMonthly.textContent = "$" + result.newMonthly.toFixed(2);
 }
 
 const NEWLINE = String.fromCharCode(10);
 
 // What the page saw (so the user can judge it), then what a click does
+function clickText(s) {
+  if (clickMode === "cancel") {
+    return canceled.has(s) ? "Click to keep it" : "Click to cancel it and see what you would save";
+  }
+  return hidden.has(s) ? "Click to include in monthly total" : "Click to hide from monthly total";
+}
+
 function tipText(s) {
   return [
     "Seen " + s.count + " times, about every " + s.typicalGap + " days. Last charge " + formatDateUS(s.last) + ".",
     "The next date is an estimate: last charge + " + s.cycle + " days.",
-    hidden.has(s) ? "Click to include in monthly total" : "Click to hide from monthly total",
+    clickText(s),
   ].join(NEWLINE);
 }
 
@@ -105,12 +134,19 @@ function isDueSoon(s) {
   return days >= 0 && days <= 7;
 }
 
+// grays out a hidden row, strikes through a canceled one, and tells screen readers which choice a click toggles
+function applyRowState(tr, s) {
+  tr.classList.toggle("hidden", hidden.has(s));
+  tr.classList.toggle("cancel", canceled.has(s));
+  const on = clickMode === "cancel" ? canceled.has(s) : hidden.has(s);
+  tr.setAttribute("aria-pressed", String(on));
+}
+
 function addActiveRow(s) {
   const tr = document.createElement("tr");
   tr.tabIndex = 0;
   tr.setAttribute("role", "button");
-  tr.setAttribute("aria-pressed", String(hidden.has(s)));
-  tr.classList.toggle("hidden", hidden.has(s));
+  applyRowState(tr, s);
   tr.classList.toggle("due-soon", isDueSoon(s)); // stays when the row is hidden; the row is just grayed out
 
   for (const text of [s.displayName, "$" + s.price.toFixed(2), s.period, formatDateUS(s.next)]) {
@@ -132,10 +168,10 @@ function addActiveRow(s) {
   }
 
   const toggle = () => {
-    if (hidden.has(s)) hidden.delete(s);
-    else hidden.add(s);
-    tr.classList.toggle("hidden", hidden.has(s));
-    tr.setAttribute("aria-pressed", String(hidden.has(s)));
+    const picked = clickMode === "cancel" ? canceled : hidden;
+    if (picked.has(s)) picked.delete(s);
+    else picked.add(s);
+    applyRowState(tr, s);
     tip.textContent = tipText(s);
     updateTotal();
   };
@@ -208,6 +244,7 @@ function show(subscriptions) {
   current = subscriptions.filter((s) => s.active);
   ended = subscriptions.filter((s) => !s.active);
   hidden = new Set();
+  canceled = new Set();
 
   render();
   updateTotal();
@@ -292,6 +329,21 @@ cardToggle.addEventListener("click", () => {
     if (allHidden) hidden.delete(s);
     else hidden.add(s);
   }
+  render();
+  updateTotal();
+});
+
+// switch what a row click does: hide it from the total, or pick it to see what canceling would save
+for (const button of modeButtons) {
+  button.addEventListener("click", () => {
+    clickMode = button.dataset.mode;
+    for (const other of modeButtons) other.setAttribute("aria-pressed", String(other === button));
+    render();
+  });
+}
+
+clearCancel.addEventListener("click", () => {
+  canceled = new Set();
   render();
   updateTotal();
 });

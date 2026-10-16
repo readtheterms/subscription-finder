@@ -86,6 +86,11 @@
         <button type="button" data-sort="date" aria-pressed="false">Date</button>
         <button type="button" data-sort="price" aria-pressed="false">Price</button>
       </div>
+      <div class="modebar">
+        Click a row to:
+        <button type="button" data-mode="hide" aria-pressed="true">Hide from total</button>
+        <button type="button" data-mode="cancel" aria-pressed="false">Cancel it</button>
+      </div>
       <table>
         <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Next</th></tr></thead>
         <tbody id="active-body"></tbody>
@@ -100,6 +105,13 @@
       <div class="yearly-row">
         <span>Yearly total:</span>
         <span id="yearly-total"></span>
+      </div>
+      <div class="savings" id="savings" hidden>
+        <p class="savings-title">If you cancel <span id="savings-count"></span>:</p>
+        <div class="savings-row"><span>You would save per month</span><span id="save-month"></span></div>
+        <div class="savings-row"><span>You would save per year</span><span id="save-year"></span></div>
+        <div class="savings-row savings-new"><span>New monthly total</span><span id="new-monthly"></span></div>
+        <button type="button" id="clear-cancel">Clear canceled</button>
       </div>
       <p class="fine" id="fine">Yearly plans count as 1/12 of their price. Dates are estimates.</p>
 

@@ -108,6 +108,7 @@ h1 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
 
 /* the first thing a new visitor should try */
 .sample { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin: 0.75rem 0 0; color: var(--faded); font-size: 0.8rem; }
+.sample[hidden] { display: none; } /* the flex layout above would otherwise override the hidden attribute */
 #sample-button {
   padding: 0.35rem 0.8rem;
   border: 1px solid var(--ink);
@@ -145,8 +146,8 @@ h1 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
 
 h2 { margin: 0 0 0.4rem; font-size: 0.95rem; text-transform: uppercase; }
 
-.sortbar { margin: 0 0 0.5rem; color: var(--faded); font-size: 0.8rem; }
-.sortbar button {
+.sortbar, .modebar { margin: 0 0 0.5rem; color: var(--faded); font-size: 0.8rem; }
+.sortbar button, .modebar button {
   margin-left: 0.35rem;
   padding: 0.1rem 0.5rem;
   border: 1px solid var(--ink);
@@ -155,7 +156,7 @@ h2 { margin: 0 0 0.4rem; font-size: 0.95rem; text-transform: uppercase; }
   font: inherit;
   cursor: pointer;
 }
-.sortbar button:hover, .sortbar button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.sortbar button:hover, .sortbar button[aria-pressed="true"], .modebar button:hover, .modebar button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
 table { border-collapse: collapse; width: 100%; }
 th {
@@ -189,6 +190,29 @@ td:nth-child(4) { white-space: nowrap; }
   font-size: 0.85rem;
 }
 #yearly-total { font-weight: 700; }
+.savings {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--ink);
+  font-size: 0.85rem;
+}
+.savings-title { margin: 0 0 0.4rem; font-weight: 700; }
+.savings-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.1rem 0; }
+.savings-row span:last-child { font-weight: 700; }
+.savings-new { margin-top: 0.3rem; padding-top: 0.4rem; border-top: 1px dashed var(--ink); }
+#clear-cancel {
+  margin-top: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--faded);
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#clear-cancel:hover { color: var(--ink); }
+.savings[hidden] { display: none; }
 .fine { margin: 0.25rem 0 1.25rem; color: var(--faded); font-size: 0.8rem; }
 
 /* active rows can be clicked to hide them from the monthly total */
@@ -196,6 +220,8 @@ td:nth-child(4) { white-space: nowrap; }
 #active-body tr:hover { background: #f2f2f2; }
 #active-body tr:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 #active-body tr.hidden { opacity: 0.4; }
+/* a row picked for "what if I cancel": struck through (the tags keep their normal look) */
+#active-body tr.cancel td { text-decoration: line-through; }
 
 .overdue,
 #active-body tr.due-soon td:nth-child(4)::after {

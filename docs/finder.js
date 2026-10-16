@@ -531,6 +531,19 @@ function yearlyTotal(subscriptions) {
   return Math.round((monthly * 12 + yearly) * 100) / 100;
 }
 
+// What canceling some subscriptions would save. `counted` is every row that counts toward the totals and
+// `canceled` is the part of it the user picked. It reuses the receipt's own two totals, so the numbers
+// always agree with the rest of the page: saved + kept adds back up to the full total.
+function savingsFor(counted, canceled) {
+  const kept = counted.filter((s) => !canceled.includes(s));
+  return {
+    perMonth: monthlyTotal(canceled),
+    perYear: yearlyTotal(canceled),
+    newMonthly: monthlyTotal(kept),
+    newYearly: yearlyTotal(kept),
+  };
+}
+
 if (typeof module !== "undefined") {
   module.exports = { mergeEntries, yearlyTotal, entriesFromRows, groupCharges, brandFor, displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
 }
