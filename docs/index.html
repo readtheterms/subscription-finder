@@ -31,7 +31,7 @@
         <button type="button" data-sort="price" aria-pressed="false">Price</button>
       </div>
       <table>
-        <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Next (est.)</th></tr></thead>
+        <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Next</th></tr></thead>
         <tbody id="active-body"></tbody>
       </table>
 
@@ -39,7 +39,11 @@
         <span>Monthly total:</span>
         <span id="total"></span>
       </div>
-      <p class="fine" id="fine">Yearly plans count as 1/12 of their price.</p>
+      <div class="yearly-row">
+        <span>Yearly total:</span>
+        <span id="yearly-total"></span>
+      </div>
+      <p class="fine" id="fine">Yearly plans count as 1/12 of their price. Dates are estimates.</p>
 
       <details>
         <summary id="ended-summary">Ended</summary>
@@ -50,7 +54,6 @@
       </details>
     </div>
 
-    <p class="thanks">Nothing leaves this page.</p>
   </main>
 
   <div id="tip" role="tooltip" hidden></div>

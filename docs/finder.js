@@ -452,6 +452,19 @@ function monthlyTotal(subscriptions) {
   return Math.round(total * 100) / 100;
 }
 
+// Same rows as monthlyTotal (active only), but built as (monthly prices x 12) + yearly prices,
+// so a yearly plan is added once at its real price instead of being divided by 12 and multiplied back.
+function yearlyTotal(subscriptions) {
+  let monthly = 0;
+  let yearly = 0;
+  for (const sub of subscriptions) {
+    if (!sub.active) continue;
+    if (sub.period === "yearly") yearly += sub.price;
+    else monthly += sub.price;
+  }
+  return Math.round((monthly * 12 + yearly) * 100) / 100;
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { entriesFromRows, groupCharges, brandFor, displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
+  module.exports = { yearlyTotal, entriesFromRows, groupCharges, brandFor, displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
 }

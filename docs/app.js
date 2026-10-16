@@ -36,7 +36,8 @@ function addRow(body, cells) {
 
 const fineEl = document.getElementById("fine");
 const tip = document.getElementById("tip");
-const FINE = "Yearly plans count as 1/12 of their price.";
+const FINE = "Yearly plans count as 1/12 of their price. Dates are estimates.";
+const yearlyEl = document.getElementById("yearly-total");
 
 let current = []; // the active subscriptions on screen
 let hidden = new Set(); // the ones the user clicked to leave out of the total
@@ -44,6 +45,7 @@ let hidden = new Set(); // the ones the user clicked to leave out of the total
 function updateTotal() {
   const counted = current.filter((s) => !hidden.has(s));
   totalEl.textContent = "$" + monthlyTotal(counted).toFixed(2);
+  yearlyEl.textContent = "$" + yearlyTotal(counted).toFixed(2);
   fineEl.textContent = hidden.size ? FINE + " " + hidden.size + " hidden." : FINE;
 }
 
@@ -56,12 +58,29 @@ function moveTip(event) {
   tip.style.top = event.clientY + 16 + "px";
 }
 
+// Whole calendar days from today (local time) to a date. Dates in this app are stored as UTC
+// midnight built from the year, month and day, so today is built the same way from the local calendar
+// day. That keeps a Pacific-time evening from counting as tomorrow.
+function daysFromToday(ms) {
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((ms - today) / MS_PER_DAY);
+}
+
+// next charge is today or within the next 7 days
+function isDueSoon(s) {
+  const days = daysFromToday(s.next);
+  return days >= 0 && days <= 7;
+}
+
 function addActiveRow(s) {
   const tr = document.createElement("tr");
   tr.tabIndex = 0;
   tr.setAttribute("role", "button");
   tr.setAttribute("aria-pressed", String(hidden.has(s)));
   tr.classList.toggle("hidden", hidden.has(s));
+  const dueSoon = isDueSoon(s);
+  tr.classList.toggle("due-soon", dueSoon && !hidden.has(s));
 
   for (const text of [s.displayName, "$" + s.price.toFixed(2), s.period, formatDateUS(s.next)]) {
     const td = document.createElement("td");
@@ -79,6 +98,7 @@ function addActiveRow(s) {
     if (hidden.has(s)) hidden.delete(s);
     else hidden.add(s);
     tr.classList.toggle("hidden", hidden.has(s));
+    tr.classList.toggle("due-soon", dueSoon && !hidden.has(s));
     tr.setAttribute("aria-pressed", String(hidden.has(s)));
     tip.textContent = tipText(s);
     updateTotal();
@@ -163,12 +183,17 @@ function show(subscriptions) {
 // it opens, so the page keeps its own list and adds to it.
 let chosen = [];
 
+// Hides an account number in a file name: "Chase9113_Activity_20261014.csv" shows as "Chase" + four
+// bullet dots + "_Activity_20261014.csv". Only a 4-digit number directly after the bank name at the
+// start is masked, so the 8-digit date is left alone.
+const maskName = (name) => name.replace(/^([A-Za-z]+)\d{4}(?!\d)/, "$1" + "\u2022".repeat(4));
+
 const sameFile = (a, b) => a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
 
 async function showChosen() {
   message.textContent = "";
   clearButton.hidden = chosen.length === 0;
-  fileNames.textContent = chosen.length ? chosen.map((f) => f.name).join(", ") : "No file chosen";
+  fileNames.textContent = chosen.length ? chosen.map((f) => maskName(f.name)).join(", ") : "No file chosen";
   if (chosen.length === 0) {
     results.hidden = true;
     return;
@@ -180,7 +205,7 @@ async function showChosen() {
       try {
         entries = entries.concat(entriesFromRows(await parseFile(file)));
       } catch (err) {
-        throw new Error(file.name + ": " + err.message);
+        throw new Error(maskName(file.name) + ": " + err.message);
       }
     }
     const { groups, names } = groupCharges(entries);

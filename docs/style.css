@@ -70,7 +70,17 @@ h1 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
   cursor: pointer;
 }
 .button:hover, .picker input:focus-visible + .button { background: var(--ink); color: var(--paper); }
-#file-names { color: var(--faded); overflow-wrap: anywhere; }
+/* the file name stays on one line and ends in an ellipsis if it does not fit */
+#file-names {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--faded);
+  font-size: 0.78rem;
+}
 #clear-files {
   flex: none;
   margin-left: auto;
@@ -117,7 +127,6 @@ td { padding: 0.3rem 0.3rem; vertical-align: top; }
 th:nth-child(2), td:nth-child(2) { text-align: right; white-space: nowrap; }
 td:nth-child(3), td:nth-child(4) { color: var(--faded); font-size: 0.85rem; }
 td:nth-child(4) { white-space: nowrap; }
-@media (max-width: 520px) { .overdue { display: block; margin: 0.15rem 0 0; width: fit-content; } }
 
 .total-row {
   display: flex;
@@ -128,6 +137,15 @@ td:nth-child(4) { white-space: nowrap; }
   border-top: 1px dashed var(--ink);
 }
 #total { font-size: 1.8rem; font-weight: 700; }
+.yearly-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.1rem 0 0;
+  color: var(--faded);
+  font-size: 0.85rem;
+}
+#yearly-total { font-weight: 700; }
 .fine { margin: 0.25rem 0 1.25rem; color: var(--faded); font-size: 0.8rem; }
 
 /* active rows can be clicked to hide them from the monthly total */
@@ -135,7 +153,9 @@ td:nth-child(4) { white-space: nowrap; }
 #active-body tr:hover { background: #f2f2f2; }
 #active-body tr:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 #active-body tr.hidden { opacity: 0.4; }
-.overdue {
+
+.overdue,
+#active-body tr.due-soon td:nth-child(4)::after {
   display: inline-block;
   margin-left: 0.4rem;
   padding: 0 0.3rem;
@@ -145,6 +165,13 @@ td:nth-child(4) { white-space: nowrap; }
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+/* a row whose next charge is within 7 days gets the same tag as overdue, saying "due soon" */
+#active-body tr.due-soon td:nth-child(4)::after { content: "due soon"; }
+
+/* on a narrow screen the tag drops under the date */
+@media (max-width: 520px) {
+  .overdue, #active-body tr.due-soon td:nth-child(4)::after { display: block; margin: 0.15rem 0 0; width: fit-content; }
 }
 #tip {
   position: fixed;
@@ -160,8 +187,6 @@ td:nth-child(4) { white-space: nowrap; }
 details summary { cursor: pointer; text-transform: uppercase; }
 details[open] summary { margin-bottom: 0.4rem; }
 details td { color: var(--faded); }
-
-.thanks { margin: 2rem 0 0; text-align: center; color: var(--faded); font-size: 0.8rem; }
 
 @media (max-width: 520px) {
   main { margin: 1rem 0; padding: 1.5rem 0.9rem 2rem; }
