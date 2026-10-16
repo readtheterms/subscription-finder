@@ -10,10 +10,11 @@ const EXPECTED = [
   "Spotify | 11.99 | monthly | next 2026-11-12",
   "Netflix | 17.99 | monthly | next 2026-11-04",
   "Apple | 2.99 | monthly | next 2026-10-21",
+  "Chase Credit Card | 150.00 | monthly | next 2026-10-15",
   "Planet Fitness | 24.99 | monthly | ended 2026-06-02",
   "Dropbox | 119.88 | yearly | next 2027-08-14",
   "Gamestore | 134.99 | yearly | next 2027-09-03",
-  "monthly 54.21 | yearly 650.51",
+  "monthly 204.21 | yearly 2450.51",
 ];
 
 // a monthly subscription: three charges 30 days apart ending on `last` (MM/DD/YYYY strings)
@@ -55,7 +56,7 @@ test("two files from different banks are combined", () => {
   const gym = csv(charges("CITY GYM MEMBERSHIP", "-30.00", ["10/03/2026", "09/03/2026", "08/03/2026", "07/03/2026"]));
   const lines = report([readDoc("sample_transactions.csv"), gym]);
   assert.ok(lines.includes("City Gym Membership | 30.00 | monthly | next 2026-11-02"));
-  assert.equal(lines.at(-1), "monthly 84.21 | yearly 1010.51");
+  assert.equal(lines.at(-1), "monthly 234.21 | yearly 2810.51");
 });
 
 test("each file decides for itself whether purchases are positive or negative", () => {
@@ -122,13 +123,22 @@ test("a charge that did not arrive on time is marked overdue", () => {
   assert.equal(subscriptions.find((s) => s.displayName === "On Time").overdue, false);
 });
 
-test("credit card payments, transfers and Zelle are left out", () => {
+test("transfers, Zelle and ATM withdrawals are left out", () => {
   const body = [
-    charges("CITI PAYMENT", "-50.00", ["10/01/2026", "09/01/2026", "08/01/2026"]),
     charges("ONLINE TRANSFER TO SAVINGS", "-25.00", ["10/02/2026", "09/02/2026", "08/02/2026"]),
     charges("ZELLE PAYMENT TO SAM", "-20.00", ["10/03/2026", "09/03/2026", "08/03/2026"]),
+    charges("ATM WITHDRAWAL 220 MAIN ST", "-100.00", ["10/04/2026", "09/04/2026", "08/04/2026"]),
   ].join("\n");
   assert.equal(analyze([csv(body)]).subscriptions.length, 0);
+});
+
+test("credit card and loan payments are kept, so the user can hide them", () => {
+  const body = [
+    charges("CITI PAYMENT", "-50.00", ["10/01/2026", "09/01/2026", "08/01/2026"]),
+    charges("PAYMENT TO CHASE CARD ENDING IN 0334", "-75.00", ["10/05/2026", "09/05/2026", "08/05/2026"]),
+  ].join("\n");
+  const names = Array.from(analyze([csv(body)]).subscriptions.map((s) => s.displayName + " " + s.price));
+  assert.deepEqual(names, ["Citi 50", "Chase Card 75"]);
 });
 
 test("deposits are ignored", () => {

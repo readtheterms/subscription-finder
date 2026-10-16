@@ -2,3 +2,4 @@
 !docs/sample_transactions.csv
 !docs/samples/*.csv
 .claude/
+INTERVIEW_GUIDE.md

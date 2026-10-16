@@ -1,10 +1,11 @@
 // Detection logic for Subscription Finder. It started as a Python script, so the function names follow it (snake_case became camelCase).
 // Dates are stored as UTC milliseconds so daylight saving never changes a day count.
 
-// Payments to credit cards and loans, transfers and cash withdrawals repeat too, but they are not subscriptions.
-const SKIP = ["discover", "capitalone", "chasecredit", "zelle", "onlinetransfer",
-  "citipayment", "citibank", "wfcreditcard", "wellsfargo", "merrickbank", "fortiva", "avant",
-  "recurringtransf", "transferto", "transferfrom", "atmwithdrawal", "atmcash"];
+// Things that repeat but are money moving around, not a subscription: transfers, Zelle and ATM cash.
+// Credit card and loan payments are NOT skipped. They stay in the list and the user can hide them.
+// The words are matched against the start of a merchant key, which is only 15 letters long.
+const SKIP = ["zelle", "onlinetransfer", "recurringtransf", "transferto", "transferfrom",
+  "atmwithdrawal", "atmcash"];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function makeKey(description) {

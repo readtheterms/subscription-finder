@@ -4,7 +4,7 @@
 
 Reads a bank or card statement CSV and lists the charges that repeat: what each subscription costs, when the next one is due, and your monthly and yearly totals. It runs entirely in the browser, so your file is never uploaded.
 
-![The page showing five active subscriptions, a due-soon tag, and monthly and yearly totals](docs/screenshot.png)
+![The page showing six recurring charges, including a credit card payment, a due-soon tag, and monthly and yearly totals](docs/screenshot.png)
 
 **Live page:** https://readtheterms.github.io/subscription-finder/ (no CSV handy? Click **Try sample data**.)
 
@@ -31,7 +31,7 @@ If a merchant's charges don't look like a subscription as a whole, they are spli
 
 A subscription is **active** if its last charge is within 40 days (monthly) or 380 days (yearly) of the newest date in the file. Otherwise it is listed under Ended. The next date is the last charge plus 30 days (365 for yearly), so it is an estimate.
 
-Deposits and refunds are ignored. Transfers, Zelle, and some credit card payments are skipped using a short list of name prefixes. Anything not on that list still shows up, and you can hide it.
+Deposits and refunds are ignored. Transfers, Zelle and ATM withdrawals are skipped using a short list of name prefixes, because they move money around and aren't subscriptions. Credit card and loan payments are kept, since they repeat every month too. Hide any you don't want counted.
 
 ## Code
 
@@ -51,7 +51,7 @@ The tests check that the sample and every bank layout give the same subscription
 - Only monthly and yearly charges are found. Weekly ones are missed.
 - If a merchant changes its name on the statement, the old and new names appear as separate entries.
 - The 15-letter key can merge different merchants that start the same way, or split one whose name changes early.
-- The skip list is hand-written. A lender or card it doesn't list shows up as a subscription, and so can bills like rent and insurance. Hide those.
+- The skip list only covers transfers, Zelle and ATM cash. Credit card payments, rent, insurance and other bills show up as recurring charges, so hide the ones that aren't really subscriptions.
 - Overlapping files are only de-duplicated when the same transaction is written the same way in both.
 - Dates are read as month/day/year.
 - `DUE SOON` uses today's date from your computer, while `OVERDUE` compares against the newest date in the file.
