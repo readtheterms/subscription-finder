@@ -2,78 +2,64 @@
 
 [![tests](https://github.com/readtheterms/subscription-finder/actions/workflows/tests.yml/badge.svg)](https://github.com/readtheterms/subscription-finder/actions/workflows/tests.yml)
 
-I wanted to know what I was paying for every month without scrolling through a year of bank transactions. This reads a bank statement CSV and finds the recurring charges, so it can tell me which subscriptions I have, what each costs, when the next charge is coming, and what the monthly and yearly totals are.
-
-It runs entirely in the browser. It started as a Python script, and that first version is still in the git history.
+Reads a bank or card statement CSV and lists the charges that repeat: what each subscription costs, when the next one is due, and your monthly and yearly totals. It runs entirely in the browser, so your file is never uploaded.
 
 ![The page showing five active subscriptions, a due-soon tag, and monthly and yearly totals](docs/screenshot.png)
 
-**Live page:** https://readtheterms.github.io/subscription-finder/
+**Live page:** https://readtheterms.github.io/subscription-finder/ (no CSV handy? Click **Try sample data**.)
 
-No bank CSV handy? Click **Try sample data** on the page to load made-up transactions.
+## Features
 
-## Using it
-
-Choose a CSV and the page prints a receipt of your active subscriptions. Ended ones are collapsed at the bottom. The file is read in your browser with JavaScript. It is never uploaded, and there is no server.
-
-What you can do on the page:
-
-- **Add several files.** Each file you choose is added to the list, and each is read on its own, so they can come from different banks. If two files overlap, a transaction with the same date, description and amount is counted once, and the page tells you how many it skipped. **Clear** starts over.
-- **Hide a row.** Click a row to gray it out and leave it out of the totals, for charges that repeat but are not really subscriptions. Click it again to count it. Hiding resets when you load new files.
-- **Sort** by date or by price. Clicking the same button again reverses the order.
-- **Read the tags.** `DUE SOON` means the estimated next charge is within 7 days of today. `OVERDUE` means the expected date passed and no new charge showed up.
-- **Check the totals.** The monthly total counts yearly plans as 1/12 of their price. The yearly total is the monthly prices times 12 plus the yearly prices. Hidden and ended rows are left out of both.
-
-File names are shown with a 4-digit account number masked, so `Chase1234_Activity_20261014.csv` appears as `Chase••••_Activity_20261014.csv`.
-
-### Other banks
-
-It looks at the header row to find the date, description, and amount columns, so it is not tied to one bank. It also handles a separate Debit column, dates like `10/13/2026` or `2026-10-13`, amounts like `$1,234.50`, cards that list purchases as positive numbers, and files with no header row at all. `docs/samples/` has the same fake transactions in several bank-style layouts. Those layouts were written from memory and have not been checked against real exports.
-
-### Company names
-
-Merchant names are shown as company names (`SPOTIFY USA 877-778-1161 NY` becomes `Spotify`). They come from a hand-written list of subscription services, banks, and shops in `docs/finder.js`, plus the 2014 Fortune 500 in `docs/companies.js`, plus some cleanup for everything else. The cleanup is a guess, so an unknown merchant can keep a city in its name.
+- **Works with most banks.** It finds the date, description and amount columns from the header row. It also handles a separate Debit column, files with no header row, amounts like `$1,234.50`, and cards that list purchases as positive numbers.
+- **Several files at once.** Add as many as you like, even from different banks. If files overlap, a transaction with the same date, description and amount is counted once.
+- **Readable names.** `SPOTIFY USA 877-778-1161 NY` becomes `Spotify`, using a list of well-known companies plus some cleanup.
+- **Hide a row.** Click a row to gray it out and leave it out of the totals. Click again to count it.
+- **Sort** by date or price. Click the same button again to reverse.
+- **Tags.** `DUE SOON` means the next charge is expected within 7 days. `OVERDUE` means it was expected and didn't arrive.
+- **Totals.** Yearly plans count as 1/12 of their price in the monthly total. The yearly total is the monthly prices times 12 plus the yearly prices.
+- **Account numbers are masked** in the file name shown on screen.
 
 ## How it works
 
-Bank descriptions are messy. They have extra spaces, a purchase date stuck on the end, and merchant names that change a little from one charge to the next. So the page cleans each description and then builds a key from its first 15 letters, ignoring case, digits, and symbols. Charges with the same key are grouped together as one merchant.
+Bank descriptions are messy, so each one is cleaned up and turned into a key from its first 15 letters, ignoring case, digits and symbols. Charges with the same key are grouped as one merchant.
 
-A group counts as a monthly subscription if:
+A group is a **monthly** subscription if it has at least 3 charges, every gap is 25 to 35 days (55 to 70 for a skipped month, for no more than 20% of the gaps), and at least 80% of the amounts are within 25% of the median. The amount rule is loose on purpose, so a price increase or one-off fee doesn't hide a real subscription.
 
-- it has at least 3 charges
-- every gap between charges is 25 to 35 days, or 55 to 70 days for a skipped month, and no more than 20% of the gaps are skipped months
-- at least 80% of the charges are within 25% of the median amount
+A group is a **yearly** subscription if it has at least 2 charges, every gap is 350 to 380 days, and every amount is within 25% of the median.
 
-The amount rule is loose on purpose. A price increase or a one-time extra fee (my gym once bundled an annual fee into a single charge) shouldn't hide a real subscription.
+If a merchant's charges don't look like a subscription as a whole, they are split by exact price and each price is checked separately. That finds a yearly charge hidden among a merchant's other purchases.
 
-A group counts as a yearly subscription if it has at least 2 charges, every gap is 350 to 380 days, and every charge is within 25% of the median amount.
+A subscription is **active** if its last charge is within 40 days (monthly) or 380 days (yearly) of the newest date in the file. Otherwise it is listed under Ended. The next date is the last charge plus 30 days (365 for yearly), so it is an estimate.
 
-If a merchant's charges don't look like a subscription as a whole, the page splits them by exact price and checks each price separately. That is how a yearly charge hiding inside a merchant with many other purchases (like a PayPal gamestore) gets found.
+Deposits and refunds are ignored. Transfers, Zelle, and some credit card payments are skipped using a short list of name prefixes. Anything not on that list still shows up, and you can hide it.
 
-A monthly subscription is active if its last charge is within 40 days of the newest date in the file, and a yearly one within 380 days. Otherwise it is listed as ended. The next charge date is the last charge plus 30 days (365 for yearly), so it is an estimate.
+## Code
 
-Deposits and refunds are ignored. Zelle, bank transfers, and some credit card payments repeat every month too, but they aren't subscriptions, so they are skipped using a short list of name prefixes. Anything not on that list still shows up, and you can hide it with a click.
+| File | What it is |
+| --- | --- |
+| `docs/index.html`, `docs/style.css` | The page |
+| `docs/app.js` | The page's behavior |
+| `docs/finder.js` | Reading files and finding subscriptions |
+| `docs/companies.js` | Company names (the 2014 Fortune 500) |
+| `docs/samples/` | The same made-up transactions in several bank layouts |
+| `tests/` | Tests that run on every push with GitHub Actions |
 
-The detection logic is in `docs/finder.js`, the page is `docs/app.js`, and `docs/companies.js` is the company list.
-
-## Tests
-
-The tests in `tests/` run on every push with GitHub Actions (the badge at the top shows whether they pass). They check that the sample file and every bank layout in `docs/samples/` produce the same subscriptions and totals, plus the detection rules, overlapping files, date and amount reading, and company names. They use Node's built-in test runner and need no packages.
+The tests check that the sample and every bank layout give the same subscriptions and totals, plus the detection rules, overlapping files, date and amount reading, and company names.
 
 ## Limits
 
-- It only finds monthly and yearly charges. Weekly ones are missed.
-- If a merchant changes the name on the statement, the old and new names show up as separate entries, and only the newest one is marked active.
-- The 15-letter key can merge different merchants that start the same way, or split one merchant whose name changes early. I picked 15 by trying it on real data.
-- The skip list is hand-written, so a lender or card I haven't listed shows up as a subscription. Bills like rent, insurance, and utilities can also show up, since they repeat monthly too.
-- Overlapping files are only de-duplicated when the same transaction is written the same way in both. If two exports describe it differently, it is counted twice.
-- Dates are read as month/day/year. A file with day/month/year dates would be read wrong.
+- Only monthly and yearly charges are found. Weekly ones are missed.
+- If a merchant changes its name on the statement, the old and new names appear as separate entries.
+- The 15-letter key can merge different merchants that start the same way, or split one whose name changes early.
+- The skip list is hand-written. A lender or card it doesn't list shows up as a subscription, and so can bills like rent and insurance. Hide those.
+- Overlapping files are only de-duplicated when the same transaction is written the same way in both.
+- Dates are read as month/day/year.
 - `DUE SOON` uses today's date from your computer, while `OVERDUE` compares against the newest date in the file.
-- Other banks' layouts haven't been checked against real exports, and it has only been tried on a few people's Chase exports.
+- Layouts for banks other than Chase were written from memory and haven't been checked against real exports.
 
 ## Privacy
 
-Real statements are never committed. `.gitignore` blocks every `.csv` file except the made-up samples in `docs/sample_transactions.csv` and `docs/samples/`. The page never sends your file anywhere. The only network requests it makes are loading the Papa Parse CSV library from a CDN, and the sample button's request for the sample file from the site itself.
+Your file is read in the browser and never sent anywhere. The only network requests are the page's own files, the Papa Parse CSV library from a CDN, and the sample button loading the sample. Real statements are never committed: `.gitignore` blocks every `.csv` except the made-up samples in `docs/`.
 
 ## License
 
