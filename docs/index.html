@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Security policy. The page may only run its own scripts plus the pinned CSV library, and may only
+       talk to its own site (to load the sample). So even a bug or a tampered script could not send your
+       file to another server. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Subscription Finder</title>
   <meta name="description" content="Find the subscriptions hiding in your bank statement. Choose a CSV to see what repeats, what it costs and when it is due. It runs in your browser and nothing is uploaded.">
   <meta name="theme-color" content="#e6e6e6">
@@ -29,6 +33,8 @@
       <h1>Subscription Finder</h1>
       <p class="sub">Recurring charges</p>
     </header>
+
+    <noscript><p class="lead">This page needs JavaScript. It reads your CSV in the browser, so nothing is uploaded.</p></noscript>
 
     <p class="lead">Choose your bank or card CSV. It needs a date, a description and an amount column. It is read in your browser and nothing is uploaded.</p>
 
@@ -65,8 +71,8 @@
         <p>A CSV does list your purchases, so treat it like any private file: keep it on your own device and delete it when you're done.</p>
       </details>
     </div>
-    <p id="message"></p>
-    <p class="note" id="note"></p>
+    <p id="message" role="alert"></p>
+    <p class="note" id="note" aria-live="polite"></p>
 
     <div id="results" hidden>
       <h2>Active</h2>
@@ -103,7 +109,7 @@
 
   <div id="tip" role="tooltip" hidden></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
   <script src="companies.js"></script>
   <script src="finder.js"></script>
   <script src="app.js"></script>

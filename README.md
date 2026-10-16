@@ -44,7 +44,7 @@ Deposits and refunds are ignored. Transfers, Zelle and ATM withdrawals are skipp
 | `docs/samples/` | The same made-up transactions in several bank layouts |
 | `tests/` | Tests that run on every push with GitHub Actions |
 
-The tests check that the sample and every bank layout give the same subscriptions and totals, plus the detection rules, overlapping files, date and amount reading, and company names.
+The tests check that the sample and every bank layout give the same subscriptions and totals, plus the detection rules, overlapping files, date and amount reading, and company names. A second set of tests guards the privacy and security settings.
 
 ## Limits
 
@@ -57,9 +57,17 @@ The tests check that the sample and every bank layout give the same subscription
 - `DUE SOON` uses today's date from your computer, while `OVERDUE` compares against the newest date in the file.
 - Layouts for banks other than Chase were written from memory and haven't been checked against real exports.
 
-## Privacy
+## Privacy and security
 
-Your file is read in the browser and never sent anywhere. The only network requests are the page's own files, the Papa Parse CSV library from a CDN, and the sample button loading the sample. Real statements are never committed: `.gitignore` blocks every `.csv` except the made-up samples in `docs/`.
+Your file is read in the browser and never sent anywhere, and the page enforces that instead of just promising it:
+
+- A **Content Security Policy** in the page only allows it to contact its own site (to load the sample) and to run its own scripts plus one pinned library. Even a bug or a tampered script could not send your file to another server.
+- The Papa Parse CSV library, the only outside code, is loaded from a CDN with a **Subresource Integrity** hash, so the browser refuses it if it ever changes.
+- Text from your CSV is written to the page as plain text, never as HTML, and nothing is stored in cookies or browser storage.
+- Because anyone can pick any file, there are limits (20 MB, 200,000 rows, 500 characters per cell), and the number-checking pattern is written so a hostile file can't make the page hang.
+- Tests fail if any of this is removed.
+
+Real statements are never committed: `.gitignore` blocks every `.csv` except the made-up samples in `docs/`.
 
 ## License
 

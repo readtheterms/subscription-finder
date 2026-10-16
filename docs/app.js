@@ -13,6 +13,12 @@ const sampleButton = document.getElementById("sample-button");
 
 function parseFile(file) {
   return new Promise((resolve, reject) => {
+    try {
+      checkFileSize(file.size); // refuse a huge file before reading any of it
+    } catch (err) {
+      reject(err);
+      return;
+    }
     Papa.parse(file, {
       skipEmptyLines: true,
       complete: (parsed) => {

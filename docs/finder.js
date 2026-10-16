@@ -8,6 +8,17 @@ const SKIP = ["zelle", "onlinetransfer", "recurringtransf", "transferto", "trans
   "atmwithdrawal", "atmcash"];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// Limits, so a huge or hostile file cannot freeze the page. Real bank exports are far below all of these.
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB per file
+const MAX_ROWS = 200000; // rows per file
+const MAX_CELL = 500; // characters kept from any one cell
+
+function checkFileSize(bytes) {
+  if (bytes > MAX_FILE_BYTES) {
+    throw new Error("That file is too large (over 20 MB). Export a shorter date range.");
+  }
+}
+
 function makeKey(description) {
   const letters = description.toLowerCase().replace(/[^a-z]/g, "");
   return letters.slice(0, 15);
@@ -172,6 +183,7 @@ function median(numbers) {
 function rowsFromArrays(arrays) {
   const data = arrays.filter((row) => row.some((cell) => cell.trim() !== ""));
   if (data.length === 0) throw new Error("The file has no rows.");
+  if (data.length > MAX_ROWS + 1) throw new Error("That file has too many rows (over 200,000). Export a shorter date range.");
 
   const first = data[0];
   const hasHeader = !first.some((cell) => !Number.isNaN(parseDate(cell)));
@@ -184,7 +196,9 @@ function rowsFromArrays(arrays) {
   const width = Math.max(...data.map((row) => row.length));
   const share = (col, test) => data.filter((row) => test((row[col] || "").trim())).length / data.length;
   const isDate = (text) => !Number.isNaN(parseDate(text));
-  const isNumber = (text) => /^\(?-?\$?[\d,]*\.?\d+\)?$/.test(text);
+  // written so no part of the pattern can match the same digits two ways, which keeps it fast
+  // even on a hostile cell (a nested pattern like [\d,]*\d+ gets very slow on a long run of digits)
+  const isNumber = (text) => text.length <= MAX_CELL && /^\(?-?\$?(?:\d[\d,]*(?:\.\d*)?|\.\d+)\)?$/.test(text);
 
   let dateCol = -1;
   let amountCol = -1;
@@ -246,7 +260,7 @@ function detectColumns(headers) {
   if (!date || !description || (!amount && !debit)) {
     throw new Error(
       "Could not find the columns. Need a date, a description and an amount (or debit) column. Found: " +
-        headers.join(", ")
+        headers.join(", ").slice(0, 200)
     );
   }
   return { date, description, amount, debit };
@@ -255,7 +269,7 @@ function detectColumns(headers) {
 // "$1,234.50" -> 1234.5, "(12.00)" -> -12, "" -> NaN
 function parseAmount(text) {
   if (text === undefined || text === null) return NaN;
-  let t = String(text).trim();
+  let t = String(text).trim().slice(0, MAX_CELL);
   const negative = /^\(.*\)$/.test(t) || t.startsWith("-");
   t = t.replace(/[^0-9.]/g, "");
   if (t === "") return NaN;
@@ -267,6 +281,7 @@ function parseAmount(text) {
 // Returns [{date, description, amount}] with spending stored as negative amounts, like the Chase export.
 function entriesFromRows(rows) {
   if (rows.length === 0) throw new Error("The file has no rows.");
+  if (rows.length > MAX_ROWS) throw new Error("That file has too many rows (over 200,000). Export a shorter date range.");
 
   const cols = detectColumns(Object.keys(rows[0]));
 
@@ -274,7 +289,7 @@ function entriesFromRows(rows) {
   let entries = [];
   for (const row of rows) {
     const date = (row[cols.date] || "").trim();
-    if (Number.isNaN(parseDate(date))) continue;
+    if (date.length > 40 || Number.isNaN(parseDate(date))) continue;
 
     let amount = cols.amount ? parseAmount(row[cols.amount]) : NaN;
     if (Number.isNaN(amount) && cols.debit) {
@@ -283,7 +298,7 @@ function entriesFromRows(rows) {
     }
     if (Number.isNaN(amount)) continue;
 
-    entries.push({ date, description: row[cols.description] || "", amount });
+    entries.push({ date, description: (row[cols.description] || "").slice(0, MAX_CELL), amount });
   }
 
   // Some banks (often credit cards) list purchases as positive numbers.
