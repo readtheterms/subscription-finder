@@ -8,6 +8,7 @@ const totalEl = document.getElementById("total");
 const fileNames = document.getElementById("file-names");
 const clearButton = document.getElementById("clear-files");
 const sampleLine = document.getElementById("sample-line");
+const noteEl = document.getElementById("note");
 const sampleButton = document.getElementById("sample-button");
 
 function parseFile(file) {
@@ -194,6 +195,7 @@ const sameFile = (a, b) => a.name === b.name && a.size === b.size && a.lastModif
 
 async function showChosen() {
   message.textContent = "";
+  noteEl.textContent = "";
   clearButton.hidden = chosen.length === 0;
   sampleLine.hidden = chosen.length > 0;
   fileNames.textContent = chosen.length ? chosen.map((f) => maskName(f.name)).join(", ") : "No file chosen";
@@ -203,14 +205,18 @@ async function showChosen() {
   }
 
   try {
-    let entries = [];
+    const perFile = [];
     for (const file of chosen) {
       try {
-        entries = entries.concat(entriesFromRows(await parseFile(file)));
+        perFile.push(entriesFromRows(await parseFile(file)));
       } catch (err) {
         throw new Error(maskName(file.name) + ": " + err.message);
       }
     }
+    const { entries, duplicates } = mergeEntries(perFile);
+    noteEl.textContent = duplicates
+      ? "Skipped " + duplicates + " transaction" + (duplicates === 1 ? "" : "s") + " that appear in more than one file."
+      : "";
     const { groups, names } = groupCharges(entries);
     show(findSubscriptions(groups, names));
   } catch (err) {

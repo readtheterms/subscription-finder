@@ -1,5 +1,7 @@
 # Subscription Finder
 
+[![tests](https://github.com/readtheterms/subscription-finder/actions/workflows/tests.yml/badge.svg)](https://github.com/readtheterms/subscription-finder/actions/workflows/tests.yml)
+
 I wanted to know what I was paying for every month without scrolling through a year of bank transactions. This reads a bank statement CSV and finds the recurring charges, so it can tell me which subscriptions I have, what each costs, when the next charge is coming, and what the monthly and yearly totals are.
 
 It runs entirely in the browser. It started as a Python script, and that first version is still in the git history.
@@ -16,7 +18,7 @@ Choose a CSV and the page prints a receipt of your active subscriptions. Ended o
 
 What you can do on the page:
 
-- **Add several files.** Each file you choose is added to the list, and each is read on its own, so they can come from different banks. **Clear** starts over.
+- **Add several files.** Each file you choose is added to the list, and each is read on its own, so they can come from different banks. If two files overlap, a transaction with the same date, description and amount is counted once, and the page tells you how many it skipped. **Clear** starts over.
 - **Hide a row.** Click a row to gray it out and leave it out of the totals, for charges that repeat but are not really subscriptions. Click it again to count it. Hiding resets when you load new files.
 - **Sort** by date or by price. Clicking the same button again reverses the order.
 - **Read the tags.** `DUE SOON` means the estimated next charge is within 7 days of today. `OVERDUE` means the expected date passed and no new charge showed up.
@@ -54,13 +56,17 @@ Deposits and refunds are ignored. Zelle, bank transfers, and some credit card pa
 
 The detection logic is in `docs/finder.js`, the page is `docs/app.js`, and `docs/companies.js` is the company list.
 
+## Tests
+
+The tests in `tests/` run on every push with GitHub Actions (the badge at the top shows whether they pass). They check that the sample file and every bank layout in `docs/samples/` produce the same subscriptions and totals, plus the detection rules, overlapping files, date and amount reading, and company names. They use Node's built-in test runner and need no packages.
+
 ## Limits
 
 - It only finds monthly and yearly charges. Weekly ones are missed.
 - If a merchant changes the name on the statement, the old and new names show up as separate entries, and only the newest one is marked active.
 - The 15-letter key can merge different merchants that start the same way, or split one merchant whose name changes early. I picked 15 by trying it on real data.
 - The skip list is hand-written, so a lender or card I haven't listed shows up as a subscription. Bills like rent, insurance, and utilities can also show up, since they repeat monthly too.
-- If two files cover the same dates, the same transaction is counted twice. That can hide a real subscription, so avoid overlapping exports.
+- Overlapping files are only de-duplicated when the same transaction is written the same way in both. If two exports describe it differently, it is counted twice.
 - Dates are read as month/day/year. A file with day/month/year dates would be read wrong.
 - `DUE SOON` uses today's date from your computer, while `OVERDUE` compares against the newest date in the file.
 - Other banks' layouts haven't been checked against real exports, and it has only been tried on a few people's Chase exports.

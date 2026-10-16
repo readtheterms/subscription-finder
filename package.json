@@ -1,0 +1,8 @@
+{
+  "name": "subscription-finder",
+  "private": true,
+  "description": "Finds recurring charges in a bank CSV, in the browser. This file only exists to run the tests.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

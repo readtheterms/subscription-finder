@@ -4,6 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Subscription Finder</title>
+  <meta name="description" content="Find the subscriptions hiding in your bank statement. Choose a CSV to see what repeats, what it costs and when it is due. It runs in your browser and nothing is uploaded.">
+  <meta name="theme-color" content="#e6e6e6">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+  <!-- the preview shown when the link is shared -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Subscription Finder">
+  <meta property="og:description" content="Find the subscriptions hiding in your bank statement. Choose a CSV to see what repeats, what it costs and when it is due. It runs in your browser and nothing is uploaded.">
+  <meta property="og:url" content="https://readtheterms.github.io/subscription-finder/">
+  <meta property="og:image" content="https://readtheterms.github.io/subscription-finder/social.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A receipt listing subscriptions with a monthly and yearly total">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Subscription Finder">
+  <meta name="twitter:description" content="Find the subscriptions hiding in your bank statement. Choose a CSV to see what repeats, what it costs and when it is due. It runs in your browser and nothing is uploaded.">
+  <meta name="twitter:image" content="https://readtheterms.github.io/subscription-finder/social.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,7 +39,34 @@
       <button type="button" id="clear-files" hidden>Clear</button>
     </div>
     <p class="sample" id="sample-line">No CSV handy? <button type="button" id="sample-button">Try sample data</button></p>
+    <div class="help">
+      <details>
+        <summary>What is a bank CSV and how do I find it?</summary>
+        <p>A CSV is a plain file that lists your transactions, one per line, like a simple spreadsheet. Banks and card companies let you download one from their website.</p>
+        <ol>
+          <li>Log in to your bank or card website on a computer.</li>
+          <li>Open the account and find your list of transactions.</li>
+          <li>Look for "Download", "Export" or a download icon, usually near the transaction list or under account activity.</li>
+          <li>Choose <strong>CSV</strong> as the file type (not PDF). Pick a date range of 6 to 12 months. Yearly charges only show up if the range is longer than a year.</li>
+          <li>Come back here and choose the file you downloaded. You can add several, like a checking account and a card.</li>
+        </ol>
+        <p>Menu names differ by bank. If you can't find it, search for "[your bank] download transactions CSV". You can open the file in a spreadsheet app to see what's inside.</p>
+      </details>
+      <details>
+        <summary>Having security concerns?</summary>
+        <p>Your bank details are private, so here is exactly what this page does and doesn't do.</p>
+        <ul>
+          <li><strong>Your file never leaves your computer.</strong> The page reads it with JavaScript inside your browser tab. There is no server behind it, so nothing is uploaded or saved anywhere.</li>
+          <li><strong>It never asks you to log in.</strong> A CSV has no passwords, and this page never asks for your bank username, password or account number. If a page asks for those, it is not this one.</li>
+          <li><strong>Nothing is kept.</strong> It stores no cookies or browser data. Close or refresh the tab and your transactions are gone.</li>
+          <li><strong>You can check it yourself.</strong> Press F12, open the Network tab, then choose a file. You will see no upload. You can also load the page, turn off your internet, and it still works on your file.</li>
+          <li><strong>The code is public.</strong> Everything is on <a href="https://github.com/readtheterms/subscription-finder" target="_blank" rel="noopener">GitHub</a>. The only outside code is Papa Parse, a common CSV-reading library.</li>
+        </ul>
+        <p>A CSV does list your purchases, so treat it like any private file: keep it on your own device and delete it when you're done.</p>
+      </details>
+    </div>
     <p id="message"></p>
+    <p class="note" id="note"></p>
 
     <div id="results" hidden>
       <h2>Active</h2>

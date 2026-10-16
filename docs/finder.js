@@ -296,6 +296,33 @@ function entriesFromRows(rows) {
   return entries;
 }
 
+// perFile: one array of entries for each file. Two exports that cover the same dates contain the same
+// transactions, which would be counted twice. A transaction is the same if its date, description and
+// amount match. Two identical lines inside ONE file are real (two coffees on the same day), so they stay;
+// across files only the larger count is kept. Returns the merged entries and how many were skipped.
+function mergeEntries(perFile) {
+  const kept = new Map(); // transaction key -> how many copies are already kept
+  const merged = [];
+  let duplicates = 0;
+
+  for (const entries of perFile) {
+    const before = new Map(kept); // what the earlier files already supplied
+    const seenInThisFile = new Map();
+    for (const entry of entries) {
+      const key = entry.date + "|" + entry.description.split(/\s+/).filter(Boolean).join(" ") + "|" + entry.amount;
+      const n = (seenInThisFile.get(key) || 0) + 1;
+      seenInThisFile.set(key, n);
+      if (n > (before.get(key) || 0)) {
+        merged.push(entry);
+        kept.set(key, n);
+      } else {
+        duplicates++;
+      }
+    }
+  }
+  return { entries: merged, duplicates };
+}
+
 // entries: the entries from every file added together. Cleans the descriptions and groups the
 // purchases by merchant.
 function groupCharges(entries) {
@@ -466,5 +493,5 @@ function yearlyTotal(subscriptions) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { yearlyTotal, entriesFromRows, groupCharges, brandFor, displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
+  module.exports = { mergeEntries, yearlyTotal, entriesFromRows, groupCharges, brandFor, displayName, formatDateUS, rowsFromArrays, makeKey, parseDate, daysBetween, loadCharges, findSubscriptions, monthlyTotal, formatDate };
 }
