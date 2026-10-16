@@ -185,7 +185,7 @@ function show(subscriptions) {
 // it opens, so the page keeps its own list and adds to it.
 let chosen = [];
 
-// Hides an account number in a file name: "Chase9113_Activity_20261014.csv" shows as "Chase" + four
+// Hides an account number in a file name: "Chase1234_Activity_20261014.csv" shows as "Chase" + four
 // bullet dots + "_Activity_20261014.csv". Only a 4-digit number directly after the bank name at the
 // start is masked, so the 8-digit date is left alone.
 const maskName = (name) => name.replace(/^([A-Za-z]+)\d{4}(?!\d)/, "$1" + "\u2022".repeat(4));

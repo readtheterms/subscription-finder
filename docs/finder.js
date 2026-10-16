@@ -1,4 +1,4 @@
-// JavaScript port of main.py. Function names match main.py (snake_case -> camelCase).
+// Detection logic for Subscription Finder. It started as a Python script, so the function names follow it (snake_case became camelCase).
 // Dates are stored as UTC milliseconds so daylight saving never changes a day count.
 
 // Payments to credit cards and loans, transfers and cash withdrawals repeat too, but they are not subscriptions.
@@ -418,7 +418,7 @@ function findSubscriptions(groups, names) {
 
       const [cycle, grace] = period === "monthly" ? [30, 40] : [365, 380];
 
-      // sort by date, then price, like Python sorting (date, price) tuples
+      // sort by date, then by price, so the highest price on the last day is the one kept
       const pairs = part
         .map(([d, a]) => [parseDate(d), Math.abs(a)])
         .sort((x, y) => x[0] - y[0] || x[1] - y[1]);
