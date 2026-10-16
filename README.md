@@ -4,18 +4,20 @@
 
 Reads a bank or card statement CSV and lists the charges that repeat: what each subscription costs, when the next one is due, and your monthly and yearly totals. It runs entirely in the browser, so your file is never uploaded.
 
-![The page showing six recurring charges, including a credit card payment, a due-soon tag, and monthly and yearly totals](docs/screenshot.png)
+![The page showing six recurring charges, including a tagged credit card payment, a due-soon tag, and monthly and yearly totals](docs/screenshot.png)
 
-**Live page:** https://readtheterms.github.io/subscription-finder/ (no CSV handy? Click **Try sample data**.)
+**Live page:** https://readtheterms.github.io/subscription-finder/ (no CSV handy? Click **Try sample data** to see it on made-up transactions.)
 
 ## Features
 
 - **Works with most banks.** It finds the date, description and amount columns from the header row. It also handles a separate Debit column, files with no header row, amounts like `$1,234.50`, and cards that list purchases as positive numbers.
 - **Several files at once.** Add as many as you like, even from different banks. If files overlap, a transaction with the same date, description and amount is counted once.
 - **Readable names.** `SPOTIFY USA 877-778-1161 NY` becomes `Spotify`, using a list of well-known companies plus some cleanup.
+- **See why it was detected.** Hover a row to see how many charges were found, how far apart they were, and when the last one was.
 - **Hide a row.** Click a row to gray it out and leave it out of the totals. Click again to count it.
+- **Card payments are tagged.** A payment toward a credit card or loan is marked `CARD PAYMENT`, with a note that it may repeat purchases already on that card, and one button to hide or show them all.
 - **Sort** by date or price. Click the same button again to reverse.
-- **Tags.** `DUE SOON` means the next charge is expected within 7 days. `OVERDUE` means it was expected and didn't arrive.
+- **Tags.** `DUE SOON` means the next charge is expected within 7 days. `OVERDUE` means it was expected and didn't arrive. Dates are always estimates, and the page says how they are worked out.
 - **Totals.** Yearly plans count as 1/12 of their price in the monthly total. The yearly total is the monthly prices times 12 plus the yearly prices.
 - **Account numbers are masked** in the file name shown on screen.
 

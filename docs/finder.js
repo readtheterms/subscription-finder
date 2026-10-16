@@ -416,6 +416,24 @@ function looksYearly(charges) {
   return true;
 }
 
+// A payment toward a credit card or loan. These repeat every month and stay in the list, but the
+// purchases behind them may already be counted from the card's own statement, so the page tags them.
+// Matched on whole words, so "chase" does not match inside "purchase".
+const PAYMENT_WORDS = /\b(payment|pymt|pmts?|autopay|auto pay|apy|repayment)\b/i;
+// lenders and card issuers whose name alone means it is a payment toward them
+const LENDER_NAMES = ["credit one", "comn cap", "comenity", "cont finance", "continental finance", "merrick",
+  "fortiva", "avant", "applecard", "apple card", "wf credit card", "wells fargo card", "chase pay in"];
+// banks that also sell other things, so they only count when the description also says "payment"
+const ISSUER_NAMES = ["citi", "chase", "discover", "capital one", "wells fargo", "best buy", "synchrony",
+  "barclays", "amex", "american express"];
+
+function isCardPayment(raw) {
+  const padded = " " + words(raw).join(" ") + " ";
+  const named = (list) => list.some((name) => padded.includes(" " + name + " "));
+  if (named(LENDER_NAMES)) return true;
+  return PAYMENT_WORDS.test(raw) && (named(ISSUER_NAMES) || /\bcard\b/i.test(raw));
+}
+
 function isSkipped(key) {
   return SKIP.some((word) => key.startsWith(word));
 }
@@ -476,7 +494,12 @@ function findSubscriptions(groups, names) {
         period,
         last,
         next: last + cycle * MS_PER_DAY,
+        cycle,
         active,
+        // the evidence behind the match, shown when hovering a row
+        count: part.length,
+        typicalGap: Math.round(median(daysBetween(part.map(([d]) => d)))),
+        cardPayment: isCardPayment(names.get(key)),
         // the expected charge date passed (plus a few days of slack) and no new charge showed up
         overdue: active && daysSince > cycle + 3,
       });

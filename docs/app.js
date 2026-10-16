@@ -10,6 +10,9 @@ const clearButton = document.getElementById("clear-files");
 const sampleLine = document.getElementById("sample-line");
 const noteEl = document.getElementById("note");
 const sampleButton = document.getElementById("sample-button");
+const cardNote = document.getElementById("card-note");
+const cardNoteText = document.getElementById("card-note-text");
+const cardToggle = document.getElementById("card-toggle");
 
 function parseFile(file) {
   return new Promise((resolve, reject) => {
@@ -45,21 +48,41 @@ function addRow(body, cells) {
 
 const fineEl = document.getElementById("fine");
 const tip = document.getElementById("tip");
-const FINE = "Yearly plans count as 1/12 of their price. Dates are estimates.";
+const FINE = "Yearly plans count as 1/12 of their price. Dates are estimates: the last charge plus 30 days (365 for yearly).";
 const yearlyEl = document.getElementById("yearly-total");
 
 let current = []; // the active subscriptions on screen
 let hidden = new Set(); // the ones the user clicked to leave out of the total
+
+// the payments toward a credit card or loan that are on screen
+const cardPayments = () => current.filter((s) => s.cardPayment);
+
+function updateCardNote() {
+  const rows = cardPayments();
+  cardNote.hidden = rows.length === 0;
+  if (rows.length === 0) return;
+  const allHidden = rows.every((s) => hidden.has(s));
+  cardNoteText.textContent = "Card payments may repeat purchases already on that card.";
+  cardToggle.textContent = (allHidden ? "Show" : "Hide") + " card payments (" + rows.length + ")";
+}
 
 function updateTotal() {
   const counted = current.filter((s) => !hidden.has(s));
   totalEl.textContent = "$" + monthlyTotal(counted).toFixed(2);
   yearlyEl.textContent = "$" + yearlyTotal(counted).toFixed(2);
   fineEl.textContent = hidden.size ? FINE + " " + hidden.size + " hidden." : FINE;
+  updateCardNote();
 }
 
+const NEWLINE = String.fromCharCode(10);
+
+// What the page saw (so the user can judge it), then what a click does
 function tipText(s) {
-  return hidden.has(s) ? "Click to include in monthly total" : "Click to hide from monthly total";
+  return [
+    "Seen " + s.count + " times, about every " + s.typicalGap + " days. Last charge " + formatDateUS(s.last) + ".",
+    "The next date is an estimate: last charge + " + s.cycle + " days.",
+    hidden.has(s) ? "Click to include in monthly total" : "Click to hide from monthly total",
+  ].join(NEWLINE);
 }
 
 function moveTip(event) {
@@ -88,13 +111,18 @@ function addActiveRow(s) {
   tr.setAttribute("role", "button");
   tr.setAttribute("aria-pressed", String(hidden.has(s)));
   tr.classList.toggle("hidden", hidden.has(s));
-  const dueSoon = isDueSoon(s);
-  tr.classList.toggle("due-soon", dueSoon && !hidden.has(s));
+  tr.classList.toggle("due-soon", isDueSoon(s)); // stays when the row is hidden; the row is just grayed out
 
   for (const text of [s.displayName, "$" + s.price.toFixed(2), s.period, formatDateUS(s.next)]) {
     const td = document.createElement("td");
     td.textContent = text;
     tr.appendChild(td);
+  }
+  if (s.cardPayment) {
+    const tag = document.createElement("span");
+    tag.className = "cardtag";
+    tag.textContent = "card payment";
+    tr.firstChild.appendChild(tag);
   }
   if (s.overdue) {
     const tag = document.createElement("span");
@@ -107,7 +135,6 @@ function addActiveRow(s) {
     if (hidden.has(s)) hidden.delete(s);
     else hidden.add(s);
     tr.classList.toggle("hidden", hidden.has(s));
-    tr.classList.toggle("due-soon", dueSoon && !hidden.has(s));
     tr.setAttribute("aria-pressed", String(hidden.has(s)));
     tip.textContent = tipText(s);
     updateTotal();
@@ -255,4 +282,16 @@ sampleButton.addEventListener("click", async () => {
   } catch (err) {
     message.textContent = "Could not load the sample. Open the page from a web server, not as a file, to use it.";
   }
+});
+
+// hides every card payment at once, or shows them all again if they are all hidden
+cardToggle.addEventListener("click", () => {
+  const rows = cardPayments();
+  const allHidden = rows.every((s) => hidden.has(s));
+  for (const s of rows) {
+    if (allHidden) hidden.delete(s);
+    else hidden.add(s);
+  }
+  render();
+  updateTotal();
 });

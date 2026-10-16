@@ -95,17 +95,29 @@ h1 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
 #clear-files:hover { color: var(--ink); }
 #clear-files[hidden] { display: none; }
 
-.sample { margin: 0.6rem 0 0; color: var(--faded); font-size: 0.8rem; }
+.privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px dashed var(--ink);
+  font-size: 0.82rem;
+}
+.privacy svg { flex: none; margin-top: 0.15rem; }
+
+/* the first thing a new visitor should try */
+.sample { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin: 0.75rem 0 0; color: var(--faded); font-size: 0.8rem; }
 #sample-button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ink);
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
   font: inherit;
-  text-decoration: underline;
+  font-size: 0.85rem;
   cursor: pointer;
 }
-#sample-button:hover { font-weight: 700; }
+#sample-button:hover { background: var(--paper); color: var(--ink); }
 
 /* collapsed help sections under the file picker */
 .help { margin: 0.6rem 0 0; font-size: 0.8rem; }
@@ -200,12 +212,38 @@ td:nth-child(4) { white-space: nowrap; }
 /* a row whose next charge is within 7 days gets the same tag as overdue, saying "due soon" */
 #active-body tr.due-soon td:nth-child(4)::after { content: "due soon"; }
 
+/* an outlined tag (the overdue and due-soon tags are filled) for a payment toward a card or loan */
+.cardtag {
+  display: block;
+  width: fit-content;
+  margin: 0.2rem 0 0;
+  padding: 0 0.3rem;
+  border: 1px solid var(--ink);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cardnote { margin: 0.6rem 0 0; color: var(--faded); font-size: 0.8rem; }
+#card-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#card-toggle:hover { font-weight: 700; }
+
 /* on a narrow screen the tag drops under the date */
 @media (max-width: 520px) {
   .overdue, #active-body tr.due-soon td:nth-child(4)::after { display: block; margin: 0.15rem 0 0; width: fit-content; }
 }
 #tip {
   position: fixed;
+  max-width: 19rem;
+  white-space: pre-line;
   z-index: 10;
   padding: 0.25rem 0.5rem;
   background: var(--ink);

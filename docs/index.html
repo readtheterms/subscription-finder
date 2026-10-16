@@ -36,7 +36,12 @@
 
     <noscript><p class="lead">This page needs JavaScript. It reads your CSV in the browser, so nothing is uploaded.</p></noscript>
 
-    <p class="lead">Choose your bank or card CSV. It needs a date, a description and an amount column. It is read in your browser and nothing is uploaded.</p>
+    <p class="lead">Choose your bank or card CSV. It needs a date, a description and an amount column.</p>
+
+    <p class="privacy">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><rect x="3" y="7" width="10" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      <span><strong>Your file never leaves your device.</strong> It is read in your browser, not uploaded.</span>
+    </p>
 
     <div class="picker">
       <input type="file" id="csv-input" accept=".csv" multiple>
@@ -44,7 +49,7 @@
       <span id="file-names">No file chosen</span>
       <button type="button" id="clear-files" hidden>Clear</button>
     </div>
-    <p class="sample" id="sample-line">No CSV handy? <button type="button" id="sample-button">Try sample data</button></p>
+    <p class="sample" id="sample-line"><button type="button" id="sample-button">Try sample data</button><span>No CSV handy? See how it works on made-up transactions.</span></p>
     <div class="help">
       <details>
         <summary>What is a bank CSV and how do I find it?</summary>
@@ -85,6 +90,8 @@
         <thead><tr><th>Item</th><th>Price</th><th>Cycle</th><th>Next</th></tr></thead>
         <tbody id="active-body"></tbody>
       </table>
+
+      <p class="cardnote" id="card-note" hidden><span id="card-note-text"></span> <button type="button" id="card-toggle"></button></p>
 
       <div class="total-row">
         <span>Monthly total:</span>
