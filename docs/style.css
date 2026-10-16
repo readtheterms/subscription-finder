@@ -95,6 +95,18 @@ h1 { margin: 0; font-size: 1.4rem; line-height: 1.2; }
 #clear-files:hover { color: var(--ink); }
 #clear-files[hidden] { display: none; }
 
+.sample { margin: 0.6rem 0 0; color: var(--faded); font-size: 0.8rem; }
+#sample-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#sample-button:hover { font-weight: 700; }
+
 #message { margin: 0.75rem 0 0; font-weight: 700; }
 #message:empty { display: none; }
 

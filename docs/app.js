@@ -7,6 +7,8 @@ const endedSummary = document.getElementById("ended-summary");
 const totalEl = document.getElementById("total");
 const fileNames = document.getElementById("file-names");
 const clearButton = document.getElementById("clear-files");
+const sampleLine = document.getElementById("sample-line");
+const sampleButton = document.getElementById("sample-button");
 
 function parseFile(file) {
   return new Promise((resolve, reject) => {
@@ -193,6 +195,7 @@ const sameFile = (a, b) => a.name === b.name && a.size === b.size && a.lastModif
 async function showChosen() {
   message.textContent = "";
   clearButton.hidden = chosen.length === 0;
+  sampleLine.hidden = chosen.length > 0;
   fileNames.textContent = chosen.length ? chosen.map((f) => maskName(f.name)).join(", ") : "No file chosen";
   if (chosen.length === 0) {
     results.hidden = true;
@@ -227,4 +230,17 @@ input.addEventListener("change", () => {
 clearButton.addEventListener("click", () => {
   chosen = [];
   showChosen();
+});
+
+// loads the made-up sample from the site itself, so a visitor without a bank CSV can see how it works
+sampleButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch("sample_transactions.csv");
+    if (!response.ok) throw new Error("not found");
+    const text = await response.text();
+    chosen.push(new File([text], "sample_transactions.csv", { type: "text/csv" }));
+    showChosen();
+  } catch (err) {
+    message.textContent = "Could not load the sample. Open the page from a web server, not as a file, to use it.";
+  }
 });

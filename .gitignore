@@ -2,3 +2,4 @@
 !sample_transactions.csv
 !docs/sample_transactions.csv
 !docs/samples/*.csv
+.claude/
