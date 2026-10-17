@@ -8,7 +8,7 @@ const docs = path.join(__dirname, "..", "docs");
 
 function loadFinder() {
   const context = vm.createContext({});
-  for (const file of ["companies.js", "finder.js"]) {
+  for (const file of ["companies.js", "finder.js", "cards.js"]) {
     vm.runInContext(fs.readFileSync(path.join(docs, file), "utf8"), context, { filename: file });
   }
   return context;

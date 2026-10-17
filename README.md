@@ -20,6 +20,7 @@ Reads a bank or card statement CSV and lists the charges that repeat: what each 
 - **Sort** by date or price. Click the same button again to reverse.
 - **Tags.** `DUE SOON` means the next charge is expected within 7 days. `OVERDUE` means it was expected and didn't arrive. Dates are always estimates, and the page says how they are worked out.
 - **Totals.** Yearly plans count as 1/12 of their price in the monthly total. The yearly total is the monthly prices times 12 plus the yearly prices.
+- **Card payments.** A second view totals what you pay toward your credit cards each month from a checking account CSV, with one block per month, a breakdown by issuer, and a 3-month average of the last full months. Months the file only partly covers are labeled instead of hidden. A checklist lists the payees that show up in at least two different months, with the ones the page recognizes ticked, so it works for any bank and any set of cards. An optional **count check** lets you enter how many payments you expect each month (1 to 99; the box refuses anything bigger and says so in red): any complete month with fewer is marked as fewer than expected, with a note naming the issuers that paid less than they usually do (judged against the three months before it). The month still in progress is never flagged. Your ticks and that number apply right away and, like everything else, are not saved. "Reset card choices" puts them back to what the page recognized. Zelle, transfers, car loans and buy-now-pay-later payments are not counted unless you tick them.
 - **Account numbers are masked** in the file name shown on screen.
 
 ## How it works
@@ -43,6 +44,7 @@ Deposits and refunds are ignored. Transfers, Zelle and ATM withdrawals are skipp
 | `docs/index.html`, `docs/style.css` | The page |
 | `docs/app.js` | The page's behavior |
 | `docs/finder.js` | Reading files and finding subscriptions |
+| `docs/cards.js` | The Card payments logic: rules, payees, months, averages |
 | `docs/companies.js` | Company names (the 2014 Fortune 500) |
 | `docs/samples/` | The same made-up transactions in several bank layouts |
 | `tests/` | Tests that run on every push with GitHub Actions |
@@ -56,6 +58,7 @@ The tests check that the sample and every bank layout give the same subscription
 - The 15-letter key can merge different merchants that start the same way, or split one whose name changes early.
 - The skip list only covers transfers, Zelle and ATM cash. Credit card payments, rent, insurance and other bills show up as recurring charges, so hide the ones that aren't really subscriptions.
 - Overlapping files are only de-duplicated when the same transaction is written the same way in both.
+- Card payments are found by payee name and are only as good as the descriptions your bank writes. A payee is a description with its reference numbers cut off, so two companies that start the same way could share a label. Check the list the page shows.
 - Dates are read as month/day/year.
 - `DUE SOON` uses today's date from your computer, while `OVERDUE` compares against the newest date in the file.
 - Layouts for banks other than Chase were written from memory and haven't been checked against real exports.
@@ -66,7 +69,7 @@ Your file is read in the browser and never sent anywhere, and the page enforces 
 
 - A **Content Security Policy** in the page only allows it to contact its own site (to load the sample) and to run its own scripts plus one pinned library. Even a bug or a tampered script could not send your file to another server.
 - The Papa Parse CSV library, the only outside code, is loaded from a CDN with a **Subresource Integrity** hash, so the browser refuses it if it ever changes.
-- Text from your CSV is written to the page as plain text, never as HTML, and nothing is stored in cookies or browser storage.
+- Text from your CSV is written to the page as plain text, never as HTML, and nothing is stored in cookies or browser storage. Even your card choices (which payees you ticked) are forgotten when you close or refresh the page.
 - Because anyone can pick any file, there are limits (20 MB, 200,000 rows, 500 characters per cell), and the number-checking pattern is written so a hostile file can't make the page hang.
 - Tests fail if any of this is removed.
 

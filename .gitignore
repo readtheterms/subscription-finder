@@ -3,3 +3,4 @@
 !docs/samples/*.csv
 .claude/
 INTERVIEW_GUIDE.md
+!tests/fixtures/*.csv

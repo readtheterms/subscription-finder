@@ -256,6 +256,8 @@ function detectColumns(headers) {
   );
   const amount = findColumn(headers, ["amount", "amt"], ["amount"]);
   const debit = findColumn(headers, ["debit", "withdrawal", "withdrawals", "money out", "paid out"], []);
+  // only a hint (Chase marks card and loan payments ACH_DEBIT or LOAN_PMT); nothing depends on it being there
+  const type = findColumn(headers, ["type", "transaction type"], []);
 
   if (!date || !description || (!amount && !debit)) {
     throw new Error(
@@ -263,7 +265,7 @@ function detectColumns(headers) {
         headers.join(", ").slice(0, 200)
     );
   }
-  return { date, description, amount, debit };
+  return { date, description, amount, debit, type };
 }
 
 // "$1,234.50" -> 1234.5, "(12.00)" -> -12, "" -> NaN
@@ -298,7 +300,12 @@ function entriesFromRows(rows) {
     }
     if (Number.isNaN(amount)) continue;
 
-    entries.push({ date, description: (row[cols.description] || "").slice(0, MAX_CELL), amount });
+    entries.push({
+      date,
+      description: (row[cols.description] || "").slice(0, MAX_CELL),
+      amount,
+      type: cols.type ? String(row[cols.type] || "").slice(0, 40) : "",
+    });
   }
 
   // Some banks (often credit cards) list purchases as positive numbers.
@@ -422,12 +429,16 @@ function looksYearly(charges) {
 const PAYMENT_WORDS = /\b(payment|pymt|pmts?|autopay|auto pay|apy|repayment)\b/i;
 // lenders and card issuers whose name alone means it is a payment toward them
 const LENDER_NAMES = ["credit one", "comn cap", "comenity", "cont finance", "continental finance", "merrick",
-  "fortiva", "avant", "applecard", "apple card", "wf credit card", "wells fargo card", "chase pay in"];
+  "fortiva", "avant", "applecard", "apple card", "wf credit card", "wells fargo card"];
 // banks that also sell other things, so they only count when the description also says "payment"
 const ISSUER_NAMES = ["citi", "chase", "discover", "capital one", "wells fargo", "best buy", "synchrony",
   "barclays", "amex", "american express"];
 
 function isCardPayment(raw) {
+  // the rules in cards.js come first: they know the payments that are NOT cards (Pay in 4, Toyota, Zelle)
+  if (notCardLabel(raw)) return false;
+  if (cardIssuerFor(raw)) return true;
+  // other issuers: a lender name, or a bank name together with a payment word
   const padded = " " + words(raw).join(" ") + " ";
   const named = (list) => list.some((name) => padded.includes(" " + name + " "));
   if (named(LENDER_NAMES)) return true;

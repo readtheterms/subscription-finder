@@ -69,7 +69,7 @@
         <ul>
           <li><strong>Your file never leaves your computer.</strong> The page reads it with JavaScript inside your browser tab. There is no server behind it, so nothing is uploaded or saved anywhere.</li>
           <li><strong>It never asks you to log in.</strong> A CSV has no passwords, and this page never asks for your bank username, password or account number. If a page asks for those, it is not this one.</li>
-          <li><strong>Nothing is kept.</strong> It stores no cookies or browser data. Close or refresh the tab and your transactions are gone.</li>
+          <li><strong>Nothing is kept.</strong> It stores no cookies or browser data, and your card choices are forgotten too. Close or refresh the tab and everything is gone.</li>
           <li><strong>You can check it yourself.</strong> Press F12, open the Network tab, then choose a file. You will see no upload. You can also load the page, turn off your internet, and it still works on your file.</li>
           <li><strong>The code is public.</strong> Everything is on <a href="https://github.com/readtheterms/subscription-finder" target="_blank" rel="noopener">GitHub</a>. The only outside code is Papa Parse, a common CSV-reading library.</li>
         </ul>
@@ -80,6 +80,12 @@
     <p class="note" id="note" aria-live="polite"></p>
 
     <div id="results" hidden>
+      <div class="viewbar" role="group" aria-label="View">
+        <button type="button" data-view="subs" aria-pressed="true">Subscriptions</button>
+        <button type="button" data-view="cards" aria-pressed="false">Card payments</button>
+      </div>
+
+      <div id="subs-view">
       <h2>Active</h2>
       <div class="sortbar">
         Sort by:
@@ -122,6 +128,33 @@
           <tbody id="ended-body"></tbody>
         </table>
       </details>
+      </div>
+
+      <div id="cards-view" hidden>
+        <h2>Card payments</h2>
+        <details class="setup" id="cards-setup">
+          <summary id="cards-setup-summary">Choose which payees are credit cards</summary>
+          <p class="setup-help">Tick the payees that are credit card payments. The ones the page recognizes are ticked for you, and your choices apply right away.</p>
+          <div class="payee-list" id="cards-setup-likely"></div>
+          <details class="setup-more" id="cards-setup-more">
+            <summary id="cards-setup-more-summary">Other recurring payees</summary>
+            <div class="payee-list" id="cards-setup-other"></div>
+          </details>
+          <p class="setup-reset"><button type="button" id="cards-reset">Reset card choices</button></p>
+        </details>
+        <p class="cards-empty" id="cards-empty" hidden>No card payments counted yet. Tick the payees above that are credit cards.</p>
+
+        <div class="check">
+          <label for="cards-expected">Payments I expect each month:</label>
+          <input type="text" id="cards-expected" inputmode="numeric" autocomplete="off" placeholder="e.g. 10" aria-describedby="cards-check-summary">
+          <button type="button" id="cards-use-usual" hidden></button>
+          <p class="check-status" id="cards-check-summary" aria-live="polite"></p>
+        </div>
+
+        <p class="cards-average" id="cards-average"></p>
+        <p class="cards-expand"><button type="button" id="cards-toggle-all">Expand all months</button></p>
+        <div id="cards-months"></div>
+      </div>
     </div>
 
   </main>
@@ -131,6 +164,7 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
   <script src="companies.js"></script>
   <script src="finder.js"></script>
+  <script src="cards.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

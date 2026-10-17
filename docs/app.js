@@ -20,6 +20,23 @@ const saveYear = document.getElementById("save-year");
 const newMonthly = document.getElementById("new-monthly");
 const clearCancel = document.getElementById("clear-cancel");
 const modeButtons = document.querySelectorAll(".modebar button");
+const viewButtons = document.querySelectorAll(".viewbar button");
+const subsView = document.getElementById("subs-view");
+const cardsView = document.getElementById("cards-view");
+const cardsEmpty = document.getElementById("cards-empty");
+const cardsAverage = document.getElementById("cards-average");
+const cardsMonths = document.getElementById("cards-months");
+const cardsToggleAll = document.getElementById("cards-toggle-all");
+const cardsSetup = document.getElementById("cards-setup");
+const cardsSetupSummary = document.getElementById("cards-setup-summary");
+const cardsSetupLikely = document.getElementById("cards-setup-likely");
+const cardsSetupOther = document.getElementById("cards-setup-other");
+const cardsSetupMore = document.getElementById("cards-setup-more");
+const cardsSetupMoreSummary = document.getElementById("cards-setup-more-summary");
+const cardsReset = document.getElementById("cards-reset");
+const cardsExpected = document.getElementById("cards-expected");
+const cardsUseUsual = document.getElementById("cards-use-usual");
+const cardsCheckSummary = document.getElementById("cards-check-summary");
 
 function parseFile(file) {
   return new Promise((resolve, reject) => {
@@ -284,11 +301,13 @@ async function showChosen() {
       }
     }
     const { entries, duplicates } = mergeEntries(perFile);
+    allEntries = entries;
     noteEl.textContent = duplicates
       ? "Skipped " + duplicates + " transaction" + (duplicates === 1 ? "" : "s") + " that appear in more than one file."
       : "";
     const { groups, names } = groupCharges(entries);
     show(findSubscriptions(groups, names));
+    renderCards();
   } catch (err) {
     results.hidden = true;
     message.textContent = err.message || "Could not read that file.";
@@ -305,6 +324,10 @@ input.addEventListener("change", () => {
 
 clearButton.addEventListener("click", () => {
   chosen = [];
+  choices = new Map();
+  expectedCount = null;
+  cardsExpected.value = "";
+  lastGoodExpected = "";
   showChosen();
 });
 
@@ -346,4 +369,271 @@ clearCancel.addEventListener("click", () => {
   canceled = new Set();
   render();
   updateTotal();
+});
+
+// ---- Card payments view ----
+
+let allEntries = []; // every transaction from the chosen files (after combining them)
+let view = "subs"; // "subs" or "cards"
+// What the user decided about each payee (label -> true or false). Nothing is saved: these choices live only in this
+// tab, like everything else, and are gone when the page is closed or refreshed.
+let choices = new Map();
+// How many card payments the user expects each month, or null for no check. Like the choices above, it is not saved.
+let expectedCount = null;
+let usualSuggestion = null; // what the last few full months usually had, offered as a one-click answer
+let lastGoodExpected = ""; // what was in the box before something was refused
+let limitFlash = false; // true while the red "between 1-99" message is showing after a refused key
+let limitFlashTimer = null;
+
+function plural(n, word) {
+  return n + " " + word + (n === 1 ? "" : "s");
+}
+
+const money = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// what the count check found for one month, in plain words
+function checkText(check) {
+  let text = check.count + " of " + check.expected + " expected payments.";
+  if (check.earlierMonths === 0) {
+    text += " There are no earlier complete months in the file to compare with.";
+  } else if (check.missing.length > 0) {
+    const months = check.earlierMonths === 1 ? "month" : check.earlierMonths + " months";
+    text += " Compared with the " + months + " before it, these paid less than usual: " +
+      check.missing.map((m) => m.issuer + " (" + m.count + ", usually " + m.usual + ")").join(", ") + ".";
+  } else {
+    text += " No single issuer paid less than usual, so it may be a payee that is not ticked yet.";
+  }
+  return text;
+}
+
+// the line under the input, and the one-click suggestion
+function updateCheckStatus(blocks, checks) {
+  usualSuggestion = usualCount(blocks);
+  if (usualSuggestion !== null && usualSuggestion > MAX_EXPECTED_PAYMENTS) usualSuggestion = null;
+  cardsUseUsual.hidden = usualSuggestion === null || usualSuggestion === expectedCount;
+  cardsUseUsual.textContent = "Use " + usualSuggestion + " (usual lately)";
+
+  // the box refuses a number above 99, so the message is also shown for a moment after a refused key
+  const problem = limitFlash ? EXPECTED_COUNT_MESSAGE : expectedCountProblem(cardsExpected.value);
+  cardsExpected.setAttribute("aria-invalid", String(problem !== ""));
+  cardsCheckSummary.classList.toggle("error", problem !== "");
+
+  if (problem !== "") {
+    cardsCheckSummary.textContent = problem;
+  } else if (expectedCount === null) {
+    cardsCheckSummary.textContent = "Optional. Months with fewer payments than this number are marked as fewer than expected.";
+  } else if (!blocks.some((b) => b.complete)) {
+    cardsCheckSummary.textContent = "There is no complete month in the file to check yet.";
+  } else if (checks.size === 0) {
+    cardsCheckSummary.textContent = "Every complete month has at least " + expectedCount + " payments.";
+  } else {
+    const names = blocks.filter((b) => checks.has(b.key)).map((b) => b.name);
+    cardsCheckSummary.textContent =
+      plural(checks.size, "month") + (checks.size === 1 ? " has" : " have") + " fewer than " + expectedCount + " payments: " + names.join(", ") + ".";
+  }
+}
+
+// one block per month with its total, so the user can check what was counted
+function renderCardResults() {
+  const today = localToday();
+  const result = matchCardPayments(allEntries, today, choices);
+  const blocks = groupByMonth(result, today);
+  const { matched } = result;
+  const checks = checkMonths(blocks, expectedCount);
+  updateCheckStatus(blocks, checks);
+  // every month starts collapsed; remember which ones the user opened, so ticking a payee does not close them again
+  const wasOpen = new Map([...cardsMonths.querySelectorAll("details.month")].map((d) => [d.dataset.key, d.open]));
+  cardsMonths.replaceChildren();
+
+  cardsEmpty.hidden = matched.length > 0;
+
+  // the average of the most recent complete months, since a payment near the 1st can land in the wrong month
+  const average = recentAverage(blocks, 3);
+  if (!average) {
+    cardsAverage.textContent = "";
+  } else {
+    const span = average.months === 1 ? average.to : average.from + " to " + average.to;
+    const label = average.months === 3 ? "3-month average" : average.months + "-month average (only " + plural(average.months, "full month") + " in the file)";
+    cardsAverage.textContent = label + ": " + money(average.average) + " a month (" + span + ").";
+  }
+
+  blocks.forEach((block) => {
+    const details = document.createElement("details");
+    details.className = "month";
+    details.dataset.key = block.key;
+    details.open = wasOpen.has(block.key) && wasOpen.get(block.key);
+
+    const summary = document.createElement("summary");
+    const total = document.createElement("span");
+    total.className = "month-total";
+    total.textContent = money(block.total);
+    const name = document.createElement("span");
+    name.className = "month-name";
+    name.textContent = block.name;
+    const meta = document.createElement("span");
+    meta.className = "month-meta";
+    meta.textContent = " \u00b7 " + plural(block.count, "payment") + (block.note ? " \u00b7 " + block.note : "");
+    summary.append(total, name, meta);
+    const check = checks.get(block.key);
+    if (check) {
+      const flag = document.createElement("span");
+      flag.className = "month-flag";
+      flag.textContent = check.expected - check.count + " fewer than expected";
+      summary.appendChild(flag);
+    }
+    details.appendChild(summary);
+    if (check) {
+      const why = document.createElement("p");
+      why.className = "month-check";
+      why.textContent = checkText(check);
+      details.appendChild(why);
+    }
+
+    if (block.count === 0) {
+      const none = document.createElement("p");
+      none.className = "month-issuers";
+      none.textContent = "No card payments found this month.";
+      details.appendChild(none);
+    } else {
+      const issuers = document.createElement("p");
+      issuers.className = "month-issuers";
+      issuers.textContent = block.byIssuer.map((i) => i.issuer + " (" + i.count + ") " + money(i.total)).join(" \u00b7 ");
+      details.appendChild(issuers);
+
+      const table = document.createElement("table");
+      table.className = "cardtable";
+      const body = document.createElement("tbody");
+      for (const m of block.payments) addRow(body, [formatDateUS(m.ms), m.issuer, money(m.amount)]);
+      table.appendChild(body);
+      details.appendChild(table);
+    }
+    cardsMonths.appendChild(details);
+  });
+
+  cardsToggleAll.hidden = blocks.length === 0;
+  const months = [...cardsMonths.querySelectorAll("details.month")];
+  cardsToggleAll.textContent = months.length > 0 && months.every((m) => m.open) ? "Collapse all months" : "Expand all months";
+}
+
+// ---- the setup checklist: which payees are credit cards ----
+
+function updateSetupSummary() {
+  const boxes = cardsSetup.querySelectorAll("input[type=checkbox]");
+  const ticked = [...boxes].filter((b) => b.checked).length;
+  cardsSetupSummary.textContent = "Choose which payees are credit cards (" + ticked + " of " + boxes.length + " ticked)";
+}
+
+function payeeRow(payee) {
+  const row = document.createElement("label");
+  row.className = "payee";
+  const box = document.createElement("input");
+  box.type = "checkbox";
+  box.checked = payee.checked;
+  const text = document.createElement("span");
+  const name = document.createElement("span");
+  name.className = "payee-name";
+  name.textContent = payee.label;
+  const meta = document.createElement("span");
+  meta.className = "payee-meta";
+  meta.textContent = plural(payee.count, "payment") + " in " + plural(payee.months, "month") + ", usually " + money(payee.typical);
+  text.append(name, meta);
+  row.append(box, text);
+
+  box.addEventListener("change", () => {
+    if (box.checked === payee.defaultOn) choices.delete(payee.label);
+    else choices.set(payee.label, box.checked);
+    updateSetupSummary();
+    renderCardResults();
+  });
+  return row;
+}
+
+// lists the payees that could be credit cards: the likely ones, and the other recurring ones behind a fold
+function renderChecklist() {
+  const payees = findPayees(allEntries, localToday(), choices);
+  cardsSetupLikely.replaceChildren();
+  cardsSetupOther.replaceChildren();
+  cardsSetup.hidden = payees.length === 0;
+  const likely = payees.filter((p) => p.likely);
+  const other = payees.filter((p) => !p.likely);
+  for (const payee of likely) cardsSetupLikely.appendChild(payeeRow(payee));
+  for (const payee of other) cardsSetupOther.appendChild(payeeRow(payee));
+  cardsSetupMore.hidden = other.length === 0;
+  cardsSetupMoreSummary.textContent = "Other recurring payees (" + other.length + ")";
+  updateSetupSummary();
+}
+
+function renderCards() {
+  renderChecklist();
+  renderCardResults();
+}
+
+// go back to what the page recognizes on its own
+cardsReset.addEventListener("click", () => {
+  choices = new Map();
+  renderCards();
+});
+
+// open every month, or close them all again
+cardsToggleAll.addEventListener("click", () => {
+  const months = [...cardsMonths.querySelectorAll("details.month")];
+  const open = months.some((m) => !m.open);
+  for (const m of months) m.open = open;
+  cardsToggleAll.textContent = open ? "Collapse all months" : "Expand all months";
+});
+
+// the switch at the top of the results: the subscription receipt, or the card payments view
+for (const button of viewButtons) {
+  button.addEventListener("click", () => {
+    view = button.dataset.view;
+    for (const other of viewButtons) other.setAttribute("aria-pressed", String(other === button));
+    subsView.hidden = view !== "subs";
+    cardsView.hidden = view !== "cards";
+  });
+}
+
+// shows the red message for a few seconds
+function flashLimitError() {
+  limitFlash = true;
+  clearTimeout(limitFlashTimer);
+  limitFlashTimer = setTimeout(() => {
+    limitFlash = false;
+    renderCardResults();
+  }, 3000);
+  renderCardResults();
+}
+
+// The box stops taking input that would not be a number from 1 to 99: a third digit, a letter, a pasted sentence.
+// It is refused before it appears, and the red message says why. Deleting is always allowed.
+cardsExpected.addEventListener("beforeinput", (event) => {
+  if (!event.inputType.startsWith("insert")) return;
+  const typed = event.data || (event.dataTransfer ? event.dataTransfer.getData("text") : "") || "";
+  const start = cardsExpected.selectionStart;
+  const end = cardsExpected.selectionEnd;
+  const result = cardsExpected.value.slice(0, start) + typed + cardsExpected.value.slice(end);
+  if (!acceptsExpectedInput(result)) {
+    event.preventDefault();
+    flashLimitError();
+  }
+});
+
+// the expected number: typing it checks every month right away
+cardsExpected.addEventListener("input", () => {
+  if (!acceptsExpectedInput(cardsExpected.value)) {
+    // something got past the check above (autofill, drag and drop): put back what was there
+    cardsExpected.value = lastGoodExpected;
+    flashLimitError();
+    return;
+  }
+  lastGoodExpected = cardsExpected.value;
+  expectedCount = parseExpectedCount(cardsExpected.value);
+  renderCardResults();
+});
+
+cardsUseUsual.addEventListener("click", () => {
+  if (usualSuggestion === null) return;
+  expectedCount = usualSuggestion;
+  cardsExpected.value = String(usualSuggestion);
+  lastGoodExpected = cardsExpected.value;
+  renderCardResults();
 });

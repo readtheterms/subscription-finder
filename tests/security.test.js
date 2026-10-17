@@ -5,7 +5,11 @@ const assert = require("node:assert/strict");
 const { readDoc } = require("./helpers");
 
 const html = readDoc("index.html");
-const pageCode = { "app.js": readDoc("app.js"), "finder.js": readDoc("finder.js") };
+const pageCode = {
+  "app.js": readDoc("app.js"),
+  "finder.js": readDoc("finder.js"),
+  "cards.js": readDoc("cards.js"),
+};
 
 function policy() {
   const match = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/);
@@ -68,6 +72,17 @@ test("the page stores nothing and sends nothing", () => {
       assert.ok(!code.includes(bad), `${file} must not use ${bad}`);
     }
   }
+});
+
+test("there is no storage file, and no script on the page loads one", () => {
+  assert.ok(!require("node:fs").existsSync(require("node:path").join(require("./helpers").docs, "storage.js")));
+  assert.ok(!/storage\.js/.test(html));
+});
+
+test("the privacy text says nothing is kept, including the card choices", () => {
+  assert.ok(html.includes("Nothing is kept. </strong>") || html.includes("<strong>Nothing is kept.</strong>"));
+  assert.ok(html.includes("your card choices are forgotten too"));
+  assert.ok(!html.includes("The only thing remembered"));
 });
 
 test("the only network request is for the sample file on the same site", () => {
